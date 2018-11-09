@@ -1,0 +1,12 @@
+[package]
+name = "app"
+version = "0.0.1"
+authors = ["jasl"]
+build = "build.rs"
+
+[dependencies]
+sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
+sgx_urts = { path = "../rust-sgx-sdk/sgx_urts" }
+dirs = "1.0"
+hex = "0.3"
+protobuf = "2.0"

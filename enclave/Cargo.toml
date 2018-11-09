@@ -1,0 +1,18 @@
+[package]
+name = "EnclaveApp"
+version = "0.0.1"
+authors = ["jasl"]
+
+[lib]
+name = "enclaveapp"
+crate-type = ["staticlib"]
+
+[features]
+default = []
+
+[target.'cfg(not(target_env = "sgx"))'.dependencies]
+sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
+sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
+
+[dependencies]
+protobuf = { path = "vendor/protobuf" }
