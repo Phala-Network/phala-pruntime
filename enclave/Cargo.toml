@@ -12,9 +12,22 @@ default = []
 
 [target.'cfg(not(target_env = "sgx"))'.dependencies]
 sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
-sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
+sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd", features = ["net"] }
+sgx_tcrypto = { path = "../rust-sgx-sdk/sgx_tcrypto" }
+sgx_tse = { path = "../rust-sgx-sdk/sgx_tse"}
+sgx_rand = { path = "../rust-sgx-sdk/sgx_rand"}
+sgx_trts = { path = "../rust-sgx-sdk/sgx_trts" }
 
 [dependencies]
+chrono = { path = "vendor/chrono" }
+webpki = { path = "vendor/webpki" }
+base64 = { path = "vendor/rust-base64" }
+yasna = { path = "vendor/yasna.rs" }
+num-bigint = { path = "vendor/num/bigint" }
+bit-vec = { path = "vendor/bit-vec", default-features = false}
+httparse = { version = "1.3.2", default-features = false }
+itertools = { version = "0.7.8" , default-features = false, features = []}
+rustls = { path = "vendor/rustls" }
+webpki-roots = { path = "vendor/webpki-roots" }
 serde = { path = "vendor/serde-rs/serde/serde" }
 serde_json = { path = "vendor/serde-rs/json"}
-
