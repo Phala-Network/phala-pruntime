@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+message Input {
+  map<string, google.protobuf.Any> arguments = 1;
+  // map<string, string> arguments = 1;
+  map<string, google.protobuf.Any> nonce = 2;
+}

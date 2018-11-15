@@ -32,6 +32,8 @@ extern crate dirs;
 extern crate protobuf;
 extern crate hex;
 
+use std::any::Any;
+
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
 
@@ -141,13 +143,21 @@ fn main() {
         },
     };
 
-    let mut one_person = protos::Person::new();
-    one_person.set_name("David".to_string());
-    one_person.set_id(0x12345678);
-    one_person.set_email("david@foo.com".to_string());
+    let mut input = protos::Input::new();
+    {
+        let mut arguments = input.mut_arguments();
+        arguments.insert("name".to_string(), "David" as &Any);
+        arguments.insert("id".to_string(), "12345678" as &Any);
+        arguments.insert("email".to_string(), "david@foo.com" as &Any);
+    }
+    
+//    let mut one_person = protos::Person::new();
+//    one_person.set_name("David".to_string());
+//    one_person.set_id(0x12345678);
+//    one_person.set_email("david@foo.com".to_string());
 
 //    let input_string = String::from("This is a normal world string passed into Enclave!\n");
-    let input_string = encode(&one_person.write_to_bytes().unwrap());
+    let input_string = encode(&input.write_to_bytes().unwrap());
 
     let mut retval = sgx_status_t::SGX_SUCCESS;
 
