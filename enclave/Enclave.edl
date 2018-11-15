@@ -38,8 +38,6 @@ enclave {
     trusted {
         /* define ECALLs here. */
 
-        public sgx_status_t say_something([in, size=len] const uint8_t* some_string, size_t len);
-
         public sgx_status_t ecall_handle(
             uint8_t action,
             [in, size = input_len] uint8_t *input_ptr, size_t input_len,

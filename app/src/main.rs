@@ -29,30 +29,26 @@
 extern crate sgx_types;
 extern crate sgx_urts;
 extern crate dirs;
-extern crate protobuf;
-extern crate hex;
-
-use std::any::Any;
 
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
+
+extern crate serde;
+#[macro_use]
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 
 use std::io::{Read, Write};
 use std::fs;
 use std::path;
 
-use protobuf::Message;
-use hex::encode;
-
-mod protos;
-
 static ENCLAVE_FILE: &'static str = "enclave.signed.so";
 static ENCLAVE_TOKEN: &'static str = "enclave.token";
 
-extern {
-    fn say_something(eid: sgx_enclave_id_t, retval: *mut sgx_status_t,
-                     some_string: *const u8, len: usize) -> sgx_status_t;
+const ENCLAVE_OUTPUT_BUF_MAX_LEN: usize = 4096 as usize;
 
+extern {
     fn ecall_handle(
         eid: sgx_enclave_id_t, retval: *mut sgx_status_t,
         action: u8,
@@ -103,7 +99,7 @@ fn init_enclave() -> SgxResult<SgxEnclave> {
     // Step 2: call sgx_create_enclave to initialize an enclave instance
     // Debug Support: set 2nd parameter to 1
     let debug = 1;
-    let mut misc_attr = sgx_misc_attribute_t {secs_attr: sgx_attributes_t { flags:0, xfrm:0}, misc_select:0};
+    let mut misc_attr = sgx_misc_attribute_t {secs_attr: sgx_attributes_t {flags:0, xfrm:0}, misc_select:0};
     let enclave = SgxEnclave::create(
         ENCLAVE_FILE,
         debug,
@@ -142,25 +138,38 @@ fn main() {
             return;
         },
     };
-    
-//    let input_string = encode(&input.write_to_bytes().unwrap());
-//
-//    let mut retval = sgx_status_t::SGX_SUCCESS;
-//
-//    let result = unsafe {
-//        say_something(enclave.geteid(),
-//                      &mut retval,
-//                      input_string.as_ptr() as * const u8,
-//                      input_string.len())
-//    };
-//
-//    match result {
-//        sgx_status_t::SGX_SUCCESS => {},
-//        _ => {
-//            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-//            return;
-//        }
-//    }
+
+    // Mock
+    let mut input = serde_json::Map::new();
+    input.insert("name".to_string(), json!("David".to_string()));
+    input.insert("id".to_string(), json!("123456".to_string()));
+    input.insert("email".to_string(), json!("david@foo.com".to_string()));
+    let input_string = json!(input).to_string();
+
+    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
+    let mut output_len : usize = 0;
+    let output_slice = &mut return_output_buf;
+
+    let mut retval = sgx_status_t::SGX_SUCCESS;
+    let result = unsafe {
+        let output_ptr = output_slice.as_mut_ptr();
+        let output_len_ptr = &mut output_len as *mut usize;
+
+        ecall_handle(
+            enclave.geteid(), &mut retval,
+            1,
+            input_string.as_ptr(), input_string.len(),
+            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
+        )
+    };
+
+    match result {
+        sgx_status_t::SGX_SUCCESS => {},
+        _ => {
+            println!("[-] ECALL Enclave Failed {}!", result.as_str());
+            return;
+        }
+    }
 
     println!("[+] say_something success...");
 

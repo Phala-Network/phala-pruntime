@@ -8,3 +8,7 @@ build = "build.rs"
 sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
 sgx_urts = { path = "../rust-sgx-sdk/sgx_urts" }
 dirs = "1.0"
+
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"

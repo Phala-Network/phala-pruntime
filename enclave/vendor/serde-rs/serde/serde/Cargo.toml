@@ -18,7 +18,7 @@ travis-ci = { repository = "serde-rs/serde" }
 appveyor = { repository = "serde-rs/serde" }
 
 [target.'cfg(not(target_env = "sgx"))'.dependencies]
-sgx_tstd = { path =  "../../../sgx_tstd" }
+sgx_tstd = { path =  "../../../../../rust-sgx-sdk/sgx_tstd" }
 
 [dependencies]
 serde_derive = { version = "1.0", optional = true, path = "../serde_derive" }

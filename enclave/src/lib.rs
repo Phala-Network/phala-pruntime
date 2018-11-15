@@ -43,20 +43,19 @@ use std::io::{self, Write};
 use std::slice;
 
 #[no_mangle]
-pub extern "C" fn say_something(some_string: *const u8, some_len: usize) -> sgx_status_t {
-
-    let str_slice = unsafe { slice::from_raw_parts(some_string, some_len) };
-    let _ = io::stdout().write(str_slice);
-
-    sgx_status_t::SGX_SUCCESS
-}
-
-#[no_mangle]
 pub extern "C" fn ecall_handle(
     action: u8,
     input_ptr: *const u8, input_len: usize,
     output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
 ) -> sgx_status_t {
+    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
+    let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
+    let input = input_value.as_object().unwrap();
+
+    let name = input.get("name").unwrap();
+    println!("Hello from enclave! you're {}", name);
+
+    
     
     sgx_status_t::SGX_SUCCESS
 }
