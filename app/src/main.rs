@@ -142,39 +142,25 @@ fn main() {
             return;
         },
     };
-
-    let mut input = protos::Input::new();
-    {
-        let mut arguments = input.mut_arguments();
-        arguments.insert("name".to_string(), "David" as &Any);
-        arguments.insert("id".to_string(), "12345678" as &Any);
-        arguments.insert("email".to_string(), "david@foo.com" as &Any);
-    }
     
-//    let mut one_person = protos::Person::new();
-//    one_person.set_name("David".to_string());
-//    one_person.set_id(0x12345678);
-//    one_person.set_email("david@foo.com".to_string());
-
-//    let input_string = String::from("This is a normal world string passed into Enclave!\n");
-    let input_string = encode(&input.write_to_bytes().unwrap());
-
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-
-    let result = unsafe {
-        say_something(enclave.geteid(),
-                      &mut retval,
-                      input_string.as_ptr() as * const u8,
-                      input_string.len())
-    };
-
-    match result {
-        sgx_status_t::SGX_SUCCESS => {},
-        _ => {
-            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-            return;
-        }
-    }
+//    let input_string = encode(&input.write_to_bytes().unwrap());
+//
+//    let mut retval = sgx_status_t::SGX_SUCCESS;
+//
+//    let result = unsafe {
+//        say_something(enclave.geteid(),
+//                      &mut retval,
+//                      input_string.as_ptr() as * const u8,
+//                      input_string.len())
+//    };
+//
+//    match result {
+//        sgx_status_t::SGX_SUCCESS => {},
+//        _ => {
+//            println!("[-] ECALL Enclave Failed {}!", result.as_str());
+//            return;
+//        }
+//    }
 
     println!("[+] say_something success...");
 

@@ -8,5 +8,3 @@ build = "build.rs"
 sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
 sgx_urts = { path = "../rust-sgx-sdk/sgx_urts" }
 dirs = "1.0"
-hex = "0.3"
-protobuf = "2.0"

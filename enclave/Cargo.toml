@@ -15,4 +15,3 @@ sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
 sgx_tstd = { path = "../rust-sgx-sdk/sgx_tstd" }
 
 [dependencies]
-protobuf = { path = "vendor/protobuf" }

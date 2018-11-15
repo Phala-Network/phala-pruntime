@@ -42,30 +42,11 @@ use std::string::String;
 use std::io::{self, Write};
 use std::slice;
 
-extern crate protobuf;
-use protobuf::hex::decode_hex;
-use protobuf::parse_from_bytes;
-
-mod protos;
-use protos::*;
-
 #[no_mangle]
 pub extern "C" fn say_something(some_string: *const u8, some_len: usize) -> sgx_status_t {
 
     let str_slice = unsafe { slice::from_raw_parts(some_string, some_len) };
     let _ = io::stdout().write(str_slice);
-
-    let decoded = decode_hex(&String::from_utf8(str_slice.to_vec()).unwrap());
-    let parsed = parse_from_bytes::<Input>(&decoded).unwrap();
-
-    let arguments = parsed.get_arguments();
-    
-    println!(
-        "\nname: {}, id: {}, email at: {}",
-        arguments.get("name").unwrap(),
-        arguments.get("id").unwrap(),
-        arguments.get("email").unwrap()
-    );
 
     sgx_status_t::SGX_SUCCESS
 }
