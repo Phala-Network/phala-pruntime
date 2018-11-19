@@ -1,13 +1,20 @@
+#![feature(option_replace)]
+
 extern crate sgx_types;
 extern crate sgx_urts;
 extern crate dirs;
 extern crate mio;
+#[macro_use]
+extern crate lazy_static;
 
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+
+extern crate actix;
+extern crate actix_web;
 
 use sgx_types::*;
 use sgx_urts::SgxEnclave;
@@ -18,11 +25,40 @@ use std::path;
 use std::net::{TcpStream, SocketAddr};
 use std::str;
 use std::io::{Read, Write};
+use std::sync::{Arc, Mutex, RwLock};
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use actix::actors::signal;
+use actix::prelude::*;
 
 static ENCLAVE_FILE: &'static str = "enclave.signed.so";
 static ENCLAVE_TOKEN: &'static str = "enclave.token";
 
 const ENCLAVE_OUTPUT_BUF_MAX_LEN: usize = 4096 as usize;
+
+lazy_static! {
+//    static ref ENCLAVE: RwLock<Option<SgxEnclave>> = match init_enclave() {
+//        Ok(r) => {
+//            println!("[+] Init Enclave Successful {}!", r.geteid());
+//            RwLock::new(Some(r))
+//        },
+//        Err(x) => {
+//            panic!("[-] Init Enclave Failed {}!", x.as_str());
+//        },
+//    };
+
+    static ref ENCLAVE: RwLock<Option<SgxEnclave>> = RwLock::new(None);
+}
+
+fn destroy_enclave() {
+    let enclave = ENCLAVE.write().unwrap().take().unwrap();
+    enclave.destroy();
+}
+
+fn get_eid() -> u64 {
+    ENCLAVE.read().unwrap().as_ref().unwrap().geteid()
+}
 
 extern {
     fn ecall_handle(
@@ -132,7 +168,6 @@ fn ocall_get_update_info(
 }
 
 fn init_enclave() -> SgxResult<SgxEnclave> {
-
     let mut launch_token: sgx_launch_token_t = [0; 1024];
     let mut launch_token_updated: i32 = 0;
     // Step 1: try to retrieve the launch token saved by last transaction
@@ -201,6 +236,41 @@ fn init_enclave() -> SgxResult<SgxEnclave> {
     Ok(enclave)
 }
 
+struct Signals;
+
+impl Actor for Signals {
+    type Context = Context<Self>;
+}
+
+// Shutdown system on and of `SIGINT`, `SIGTERM`, `SIGQUIT` signals
+impl Handler<signal::Signal> for Signals {
+    type Result = ();
+
+    fn handle(&mut self, msg: signal::Signal, _: &mut Context<Self>) {
+        match msg.0 {
+            signal::SignalType::Int => {
+                println!("SIGINT received, exiting");
+                System::current().stop();
+                destroy_enclave();
+            }
+//            signal::SignalType::Hup => {
+//                println!("SIGHUP received, reloading");
+//            }
+            signal::SignalType::Term => {
+                println!("SIGTERM received, stopping");
+                System::current().stop();
+                destroy_enclave();
+            }
+            signal::SignalType::Quit => {
+                println!("SIGQUIT received, exiting");
+                System::current().stop();
+                destroy_enclave();
+            }
+            _ => (),
+        }
+    }
+}
+
 fn main() {
     let enclave = match init_enclave() {
         Ok(r) => {
@@ -208,43 +278,59 @@ fn main() {
             r
         },
         Err(x) => {
-            println!("[-] Init Enclave Failed {}!", x.as_str());
-            return;
+            panic!("[-] Init Enclave Failed {}!", x.as_str());
         },
     };
 
+    ENCLAVE.write().unwrap().replace(enclave);
+
+    // initialize system
+    System::run(|| {
+        // Start signals handler
+        let addr = Signals.start();
+
+//        let ten_seconds = std::time::Duration::from_secs(10);
+//        std::thread::sleep(ten_seconds);
+
+        // send SIGTERM
+//        std::thread::spawn(move || {
+//            // emulate SIGNTERM
+//            addr.do_send(signal::Signal(signal::SignalType::Term));
+//        });
+    });
+
+
+
     // Mock
-    let mut input = serde_json::Map::new();
-    input.insert("name".to_string(), json!("David".to_string()));
-    input.insert("id".to_string(), json!("123456".to_string()));
-    input.insert("email".to_string(), json!("david@foo.com".to_string()));
-    let input_string = json!(input).to_string();
-
-    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
-    let mut output_len : usize = 0;
-    let output_slice = &mut return_output_buf;
-
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe {
-        let output_ptr = output_slice.as_mut_ptr();
-        let output_len_ptr = &mut output_len as *mut usize;
-
-        ecall_handle(
-            enclave.geteid(), &mut retval,
-            1,
-            input_string.as_ptr(), input_string.len(),
-            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
-        )
-    };
-
-    match result {
-        sgx_status_t::SGX_SUCCESS => {},
-        _ => {
-            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-            return;
-        }
-    }
-
-    enclave.destroy();
+//    let mut input = serde_json::Map::new();
+//    input.insert("name".to_string(), json!("David".to_string()));
+//    input.insert("id".to_string(), json!("123456".to_string()));
+//    input.insert("email".to_string(), json!("david@foo.com".to_string()));
+//    let input_string = json!(input).to_string();
+//
+//    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
+//    let mut output_len : usize = 0;
+//    let output_slice = &mut return_output_buf;
+//
+//    let mut retval = sgx_status_t::SGX_SUCCESS;
+//    let result = unsafe {
+//        let output_ptr = output_slice.as_mut_ptr();
+//        let output_len_ptr = &mut output_len as *mut usize;
+//
+//        ecall_handle(
+//            enclave.geteid(), &mut retval,
+//            1,
+//            input_string.as_ptr(), input_string.len(),
+//            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
+//        )
+//    };
+//
+//    match result {
+//        sgx_status_t::SGX_SUCCESS => {},
+//        _ => {
+//            println!("[-] ECALL Enclave Failed {}!", result.as_str());
+//            return;
+//        }
+//    }
     std::process::exit(0);
 }
