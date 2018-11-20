@@ -535,7 +535,7 @@ pub extern "C" fn ecall_handle(
         _ => unknown()
     };
 
-    let output_json_string = match result {
+    let output_json = match result {
         Ok(payload) => json!({
             "status": "ok",
             "payload": payload.to_string()
@@ -544,18 +544,20 @@ pub extern "C" fn ecall_handle(
             "status": "error",
             "payload": payload.to_string()
         })
-    }.to_string();
-    let output_json_string_len = output_json_string.len();
-    let output_json_string_len_ptr = &output_json_string_len as *const usize;
-    println!("{}", output_json_string);
+    };
+    println!("{}", output_json.to_string());
+    
+    let output_json_vec = serde_json::to_vec(&output_json).unwrap();
+    let output_json_vec_len = output_json_vec.len();
+    let output_json_vec_len_ptr = &output_json_vec_len as *const usize;
 
     unsafe {
-        ptr::copy_nonoverlapping(output_json_string.as_ptr(),
+        ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
                                  output_ptr,
-                                 output_json_string_len);
-        ptr::copy_nonoverlapping(output_json_string_len_ptr,
+                                 output_json_vec_len);
+        ptr::copy_nonoverlapping(output_json_vec_len_ptr,
                                  output_len_ptr,
-                                 std::mem::size_of_val(&output_json_string_len));
+                                 std::mem::size_of_val(&output_json_vec_len));
     }
     
     sgx_status_t::SGX_SUCCESS

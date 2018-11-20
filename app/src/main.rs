@@ -240,12 +240,11 @@ fn test() -> JsonValue {
     let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
     let mut output_len : usize = 0;
     let output_slice = &mut return_output_buf;
+    let output_ptr = output_slice.as_mut_ptr();
+    let output_len_ptr = &mut output_len as *mut usize;
 
     let mut retval = sgx_status_t::SGX_SUCCESS;
     let result = unsafe {
-        let output_ptr = output_slice.as_mut_ptr();
-        let output_len_ptr = &mut output_len as *mut usize;
-
         ecall_handle(
             eid, &mut retval,
             1,
@@ -254,15 +253,12 @@ fn test() -> JsonValue {
         )
     };
 
-    let output_string = unsafe {
-        String::from_raw_parts(
-            output_slice.as_mut_ptr(), output_len as usize, output_len*2
-        )
-    };
+    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
+    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
 
     match result {
         sgx_status_t::SGX_SUCCESS => {
-            json!(output_string)
+            json!(output_value)
         },
         _ => {
             println!("[-] ECALL Enclave Failed {}!", result.as_str());
