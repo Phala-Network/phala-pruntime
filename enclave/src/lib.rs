@@ -518,6 +518,8 @@ fn create_attestation_report(report_data_payload: &[u8]) -> Result<(String, Stri
     Ok((attn_report, sig, cert))
 }
 
+const ACTION_REGISTER: u8 = 1;
+
 #[no_mangle]
 pub extern "C" fn ecall_handle(
     action: u8,
@@ -527,9 +529,44 @@ pub extern "C" fn ecall_handle(
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let input = input_value.as_object().unwrap();
+    
+    let result = match action {
+        ACTION_REGISTER => register(&input),
+        _ => unknown()
+    };
 
-    let name = input.get("name").unwrap();
-    println!("Hello from enclave! you're {}", name);
+    let output_json_string = match result {
+        Ok(payload) => json!({
+            "status": "ok",
+            "payload": payload.to_string()
+        }),
+        Err(payload) => json!({
+            "status": "error",
+            "payload": payload.to_string()
+        })
+    }.to_string();
+    let output_json_string_len = output_json_string.len();
+    let output_json_string_len_ptr = &output_json_string_len as *const usize;
+    println!("{}", output_json_string);
+
+    unsafe {
+        ptr::copy_nonoverlapping(output_json_string.as_ptr(),
+                                 output_ptr,
+                                 output_json_string_len);
+        ptr::copy_nonoverlapping(output_json_string_len_ptr,
+                                 output_len_ptr,
+                                 std::mem::size_of_val(&output_json_string_len));
+    }
     
     sgx_status_t::SGX_SUCCESS
+}
+
+fn unknown() -> Result<Value, Value> {
+    Err(json!({
+        "message": "Unknown action"
+    }))
+}
+
+fn register(input: &Map<String, Value>) -> Result<Value, Value> {
+    Ok(json!({}))
 }

@@ -29,6 +29,7 @@ use std::sync::{Arc, RwLock};
 use std::env;
 
 use rocket_contrib::json::JsonValue;
+use rocket_contrib::json::Json;
 
 static ENCLAVE_FILE: &'static str = "enclave.signed.so";
 static ENCLAVE_TOKEN: &'static str = "enclave.token";
@@ -253,18 +254,21 @@ fn test() -> JsonValue {
         )
     };
 
+    let output_string = unsafe {
+        String::from_raw_parts(
+            output_slice.as_mut_ptr(), output_len as usize, output_len*2
+        )
+    };
+
     match result {
         sgx_status_t::SGX_SUCCESS => {
-            json!({
-                "status": "ok",
-                "message": ""
-            })
+            json!(output_string)
         },
         _ => {
             println!("[-] ECALL Enclave Failed {}!", result.as_str());
             json!({
                 "status": "error",
-                "message": result.as_str()
+                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
             })
         }
     }
