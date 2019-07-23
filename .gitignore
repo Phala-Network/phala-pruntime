@@ -20,7 +20,7 @@ Cargo.lock
 *.so.*
 
 # Executables
-bin/
+bin/**
 
 # SGX EDL generated stubs
 Enclave_u.c
@@ -32,3 +32,6 @@ Enclave_t.h
 /app/src/protos/*.rs
 /enclave/src/protos/*.rs
 /protos/tmp
+
+# Keep
+!.keep

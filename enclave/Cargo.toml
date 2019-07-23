@@ -30,6 +30,7 @@ itertools   = { version = "0.8" , default-features = false, features = []}
 rustls      = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalock_sgx" }
 webpki-roots= { git = "https://github.com/mesalock-linux/webpki-roots", branch = "mesalock_sgx" }
 
+
 serde = { git = "https://github.com/mesalock-linux/serde-sgx" }
 serde_json = { git = "https://github.com/mesalock-linux/serde-json-sgx" }
 lazy_static = { version = "1.1.0", features = ["spin_no_std"] }

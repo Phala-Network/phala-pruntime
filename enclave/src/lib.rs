@@ -7,13 +7,13 @@
 #![warn(unused_imports)]
 #![warn(unused_extern_crates)]
 
+#[cfg(not(target_env = "sgx"))]
+#[macro_use]
+extern crate sgx_tstd as std;
 extern crate sgx_types;
 extern crate sgx_trts;
 extern crate sgx_tcrypto;
 extern crate sgx_tse;
-#[cfg(not(target_env = "sgx"))]
-#[macro_use]
-extern crate sgx_tstd as std;
 extern crate sgx_rand;
 
 extern crate rustls;
@@ -27,15 +27,16 @@ extern crate bit_vec;
 extern crate num_bigint;
 extern crate chrono;
 
-#[macro_use] extern crate serde_json;
+#[macro_use]
+extern crate serde_json;
+
+#[macro_use]
+extern crate lazy_static;
 
 use sgx_types::*;
 use sgx_tse::*;
 use sgx_tcrypto::*;
 use sgx_rand::*;
-
-//use sgx_trts::trts::rsgx_read_rand;
-//use sgx_rand::Rng;
 
 use std::prelude::v1::*;
 use std::sync::Arc;
@@ -49,6 +50,9 @@ use std::vec::Vec;
 use itertools::Itertools;
 
 use serde_json::{Map, Value};
+
+use std::collections::HashMap;
+use std::sync::SgxMutex;
 
 mod cert;
 mod hex;
@@ -80,10 +84,32 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
+lazy_static! {
+    static ref SESSIONS: SgxMutex<Map<String, Value>> = {
+        let mut m = Map::new();
+        SgxMutex::new(m)
+    };
+}
+
 pub const DEV_HOSTNAME:&'static str = "api.trustedservices.intel.com";
 pub const SIGRL_SUFFIX:&'static str = "/sgx/dev/attestation/v3/sigrl/";
 pub const REPORT_SUFFIX:&'static str = "/sgx/dev/attestation/v3/report";
 pub const CERTEXPIRYDAYS: i64 = 90i64;
+
+fn load_spid(filename: &str) -> sgx_spid_t {
+    let mut spidfile = fs::File::open(filename).expect("cannot open spid file");
+    let mut contents = String::new();
+    spidfile.read_to_string(&mut contents).expect("cannot read the spid file");
+
+    hex::decode_spid(&contents)
+}
+
+fn get_ias_api_key() -> String {
+    let mut keyfile = fs::File::open("key.txt").expect("cannot open ias key file");
+    let mut key = String::new();
+    keyfile.read_to_string(&mut key).expect("cannot read the ias key file");
+    key.trim_end().to_owned()
+}
 
 fn parse_response_attn_report(resp : &[u8]) -> (String, String, String){
     println!("parse_response_attn_report");
@@ -200,7 +226,6 @@ pub fn make_ias_client_config() -> rustls::ClientConfig {
     config
 }
 
-
 pub fn get_sigrl_from_intel(fd : c_int, gid : u32) -> Vec<u8> {
     println!("get_sigrl_from_intel fd = {:?}", fd);
     let config = make_ias_client_config();
@@ -281,21 +306,6 @@ fn as_u32_le(array: &[u8; 4]) -> u32 {
         ((array[1] as u32) <<  8) +
         ((array[2] as u32) << 16) +
         ((array[3] as u32) << 24)
-}
-
-fn load_spid(filename: &str) -> sgx_spid_t {
-    let mut spidfile = fs::File::open(filename).expect("cannot open spid file");
-    let mut contents = String::new();
-    spidfile.read_to_string(&mut contents).expect("cannot read the spid file");
-
-    hex::decode_spid(&contents)
-}
-
-fn get_ias_api_key() -> String {
-    let mut keyfile = fs::File::open("key.txt").expect("cannot open ias key file");
-    let mut key = String::new();
-    keyfile.read_to_string(&mut key).expect("cannot read the ias key file");
-    key.trim_end().to_owned()
 }
 
 fn create_attestation_report(report_data_payload: &[u8]) -> Result<(String, String, String), sgx_status_t> {
@@ -494,7 +504,10 @@ fn create_attestation_report(report_data_payload: &[u8]) -> Result<(String, Stri
     Ok((attn_report, sig, cert))
 }
 
+const ACTION_TEST: u8 = 0;
 const ACTION_REGISTER: u8 = 1;
+const ACTION_STATUS: u8 = 2;
+const ACTION_TRANSFER: u8 = 3;
 
 #[no_mangle]
 pub extern "C" fn ecall_handle(
@@ -505,20 +518,41 @@ pub extern "C" fn ecall_handle(
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let input = input_value.as_object().unwrap();
+    let payload = input_value.get("input").unwrap().as_object().unwrap();
 
     let result = match action {
-        ACTION_REGISTER => register(&input),
+        ACTION_REGISTER => register(payload),
+        ACTION_STATUS => status((payload)),
+        ACTION_TRANSFER => transfer((payload)),
         _ => unknown()
     };
+
+    let nonce = input_value.get("nonce").unwrap().as_object().unwrap();
+    let nonce_vec = serde_json::to_vec(&nonce).unwrap();
+    let (attn_report, sig, cert) = create_attestation_report(&nonce_vec).unwrap();
+    let mut map = serde_json::Map::new();
+    map.insert("report".to_owned(), json!(attn_report));
+    map.insert("signature".to_owned(), json!(sig));
+    map.insert("signing_cert".to_owned(), json!(cert));
 
     let output_json = match result {
         Ok(payload) => json!({
             "status": "ok",
-            "payload": payload.to_string()
+            "payload": payload.to_string(),
+            "attestation": {
+                "version": 1,
+                "provider": "SGX",
+                "payload": map
+            }
         }),
         Err(payload) => json!({
             "status": "error",
-            "payload": payload.to_string()
+            "payload": payload.to_string(),
+            "attestation": {
+                "version": 1,
+                "provider": "SGX",
+                "payload": map
+            }
         })
     };
     println!("{}", output_json.to_string());
@@ -545,6 +579,85 @@ fn unknown() -> Result<Value, Value> {
     }))
 }
 
+const DEFAULT_CURRENCY: u64 = 1000;
+
 fn register(input: &Map<String, Value>) -> Result<Value, Value> {
-    Ok(json!({}))
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let account_name = input.get("account").unwrap().as_str().unwrap();
+    let account_currency = match sessions.get(&account_name.to_string()) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            DEFAULT_CURRENCY
+        }
+    };
+
+    sessions.insert(account_name.to_string(), json!(account_currency));
+
+    Ok(json!({
+        "account": account_name,
+        "quantity": json!(DEFAULT_CURRENCY)
+        }))
+}
+
+fn status(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let account_name = input.get("account").unwrap().as_str().unwrap();
+
+    match sessions.get(&account_name.to_string()) {
+        Some(r) => {
+            return Ok(json!({
+                "account": account_name,
+                "quantity": json!(r.as_u64().unwrap())
+            }))
+        },
+        None => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+}
+
+fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let account_name = input.get("account").unwrap().as_str().unwrap();
+    let account_currency = match sessions.get(&account_name.to_string()) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            0
+        }
+    };
+
+    let quantity = input.get("quantity").unwrap().as_u64().unwrap();
+
+    if account_currency < quantity {
+        return Err(json!({
+                "message": "Insufficient currency"
+            }))
+    }
+
+    let to_account_name = input.get("to_account").unwrap().as_str().unwrap();
+    let to_account_currency = match sessions.get(&to_account_name.to_string()) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            0
+        }
+    };
+
+    sessions.insert(account_name.to_string(), json!(account_currency - quantity));
+    sessions.insert(to_account_name.to_string(), json!(to_account_currency + quantity));
+
+    Ok(json!({
+        "account": account_name,
+        "quantity": json!(account_currency - quantity)
+        }))
 }
