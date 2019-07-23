@@ -5,15 +5,15 @@ authors = ["jasl"]
 build = "build.rs"
 
 [dependencies]
-sgx_types = { path = "../rust-sgx-sdk/sgx_types" }
-sgx_urts = { path = "../rust-sgx-sdk/sgx_urts" }
+sgx_types = { rev = "v1.0.8", git = "https://github.com/baidu/rust-sgx-sdk" }
+sgx_urts = { rev = "v1.0.8", git = "https://github.com/baidu/rust-sgx-sdk" }
 mio = "0.6"
 dirs = "1.0.2"
-lazy_static = "1.1.0"
 
+rocket = "0.4.2"
+rocket_contrib = {version = "0.4.2", features = ["json"]}
+rocket_codegen = "0.4.2"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
-
-rocket = {git = "https://github.com/SergioBenitez/Rocket.git"}
-rocket_contrib = {features = ["json"], git = "https://github.com/SergioBenitez/Rocket.git"}
+lazy_static = "1.1.0"
