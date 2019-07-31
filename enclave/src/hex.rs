@@ -71,6 +71,15 @@ pub fn encode_hex(bytes: &[u8]) -> String {
     strs.join(" ")
 }
 
+#[allow(unused)]
+pub fn encode_hex_compact(bytes: &[u8]) -> String {
+    let strs: Vec<String> = bytes
+        .iter()
+        .map(|byte| encode_hex_byte(*byte).iter().map(|c| *c).collect())
+        .collect();
+    strs.join("")
+}
+
 #[cfg(test)]
 mod test {
 

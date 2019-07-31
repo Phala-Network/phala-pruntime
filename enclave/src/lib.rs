@@ -26,12 +26,12 @@ extern crate yasna;
 extern crate bit_vec;
 extern crate num_bigint;
 extern crate chrono;
-
+extern crate secp256k1;
 #[macro_use]
 extern crate serde_json;
-
 #[macro_use]
 extern crate lazy_static;
+extern crate rand;
 
 use sgx_types::*;
 use sgx_tse::*;
@@ -47,12 +47,15 @@ use std::str;
 use std::io::{Write, Read, BufReader};
 use std::untrusted::fs;
 use std::vec::Vec;
-use itertools::Itertools;
-
-use serde_json::{Map, Value};
-
 use std::collections::HashMap;
 use std::sync::SgxMutex;
+use itertools::Itertools;
+use serde_json::{Map, Value};
+use secp256k1::*;
+use secp256k1::curve::*;
+use sgx_rand::thread_rng;
+use secp256k1::{SecretKey, PublicKey};
+use rand::SeedableRng;
 
 mod cert;
 mod hex;
@@ -584,8 +587,18 @@ const DEFAULT_CURRENCY: u64 = 1000;
 fn register(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let account_name = input.get("account").unwrap().as_str().unwrap();
-    let account_currency = match sessions.get(&account_name.to_string()) {
+    let mut seed: Vec<u8> = [0; 32].to_vec();
+    let mut os_rng = os::SgxRng::new().unwrap();
+    let mut seed: &[u32] = &[os_rng.next_u32(), os_rng.next_u32()];
+    let mut prng = rand::chacha::ChaChaRng::from_seed(seed);
+
+    let sk = SecretKey::random(&mut prng);
+    let pk = PublicKey::from_secret_key(&sk);
+
+    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
+    let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
+
+    let account_currency = match sessions.get(&s_pk) {
         Some(r) => {
             r.as_u64().unwrap()
         },
@@ -594,11 +607,12 @@ fn register(input: &Map<String, Value>) -> Result<Value, Value> {
         }
     };
 
-    sessions.insert(account_name.to_string(), json!(account_currency));
+    sessions.insert(s_pk.clone(), json!(account_currency));
 
     Ok(json!({
-        "account": account_name,
-        "quantity": json!(DEFAULT_CURRENCY)
+        "quantity": json!(account_currency),
+        "account": s_pk,
+        "sk": s_sk
         }))
 }
 
@@ -606,7 +620,6 @@ fn status(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
     let account_name = input.get("account").unwrap().as_str().unwrap();
-
     match sessions.get(&account_name.to_string()) {
         Some(r) => {
             return Ok(json!({
@@ -625,8 +638,22 @@ fn status(input: &Map<String, Value>) -> Result<Value, Value> {
 fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let account_name = input.get("account").unwrap().as_str().unwrap();
-    let account_currency = match sessions.get(&account_name.to_string()) {
+    let s_sk = input.get("sk").unwrap().as_str().unwrap();
+    let sk = match SecretKey::parse_slice(hex::decode_hex(s_sk).as_slice()) {
+        Ok(r) => {
+            r
+        },
+        _ => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+
+    let pk = PublicKey::from_secret_key(&sk);
+    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
+
+    let account_currency = match sessions.get(&s_pk) {
         Some(r) => {
             r.as_u64().unwrap()
         },
@@ -653,11 +680,11 @@ fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
         }
     };
 
-    sessions.insert(account_name.to_string(), json!(account_currency - quantity));
+    sessions.insert(s_pk.clone(), json!(account_currency - quantity));
     sessions.insert(to_account_name.to_string(), json!(to_account_currency + quantity));
 
     Ok(json!({
-        "account": account_name,
+        "account": s_pk,
         "quantity": json!(account_currency - quantity)
         }))
 }
