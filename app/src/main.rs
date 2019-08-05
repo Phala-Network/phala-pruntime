@@ -65,6 +65,11 @@ extern {
         input_ptr: *const u8, input_len: usize,
         output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
     ) -> sgx_status_t;
+
+    fn ecall_set_state(
+        eid: sgx_enclave_id_t, retval: *mut sgx_status_t,
+        input_ptr: *const u8, input_len: usize,
+    ) -> sgx_status_t;
 }
 
 pub fn lookup_ipv4(host: &str, port: u16) -> SocketAddr {
@@ -162,6 +167,19 @@ fn ocall_get_update_info(
         sgx_report_attestation_status(platform_blob, enclave_trusted, update_info)
     }
 }
+
+#[no_mangle]
+pub extern "C"
+fn ocall_dump_state(
+    output_ptr : *mut u8,
+    output_len_ptr: *mut usize,
+    output_buf_len: usize
+) -> sgx_status_t {
+    // TODO:
+
+    sgx_status_t::SGX_SUCCESS
+}
+
 
 fn init_enclave() -> SgxResult<SgxEnclave> {
     let mut launch_token: sgx_launch_token_t = [0; 1024];
@@ -284,13 +302,17 @@ fn register(contract_input: Json<ContractInput>) -> JsonValue {
     let eid = get_eid();
     let mut retval = sgx_status_t::SGX_SUCCESS;
 
+    println!("----a----");
     let input_string = serde_json::to_string(&*contract_input).unwrap();
+    println!("----b----");
 
     let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
     let mut output_len : usize = 0;
     let output_slice = &mut return_output_buf;
     let output_ptr = output_slice.as_mut_ptr();
     let output_len_ptr = &mut output_len as *mut usize;
+
+    println!("----c----");
 
     let mut retval = sgx_status_t::SGX_SUCCESS;
     let result = unsafe {
@@ -302,8 +324,13 @@ fn register(contract_input: Json<ContractInput>) -> JsonValue {
         )
     };
 
+    println!("----d----");
+
+    println!("output len {} retval {}", output_len, retval);
     let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
     let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
+
+    println!("----e----");
 
     match result {
         sgx_status_t::SGX_SUCCESS => {
@@ -403,9 +430,95 @@ fn transfer(contract_input: Json<ContractInput>) -> JsonValue {
     }
 }
 
+#[post("/dump_sessions", format = "json", data = "<contract_input>")]
+fn dump_sessions(contract_input: Json<ContractInput>) -> JsonValue {
+    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
+
+    let eid = get_eid();
+    let mut retval = sgx_status_t::SGX_SUCCESS;
+
+    println!("----a----");
+    let input_string = serde_json::to_string(&*contract_input).unwrap();
+    println!("----b----");
+    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
+    let mut output_len : usize = 0;
+    let output_slice = &mut return_output_buf;
+    let output_ptr = output_slice.as_mut_ptr();
+    let output_len_ptr = &mut output_len as *mut usize;
+
+    let mut retval = sgx_status_t::SGX_SUCCESS;
+    let result = unsafe {
+        ecall_handle(
+            eid, &mut retval,
+            4,
+            input_string.as_ptr(), input_string.len(),
+            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
+        )
+    };
+
+    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
+    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
+
+    match result {
+        sgx_status_t::SGX_SUCCESS => {
+            json!(output_value)
+        },
+        _ => {
+            println!("[-] ECALL Enclave Failed {}!", result.as_str());
+            json!({
+                "status": "error",
+                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
+            })
+        }
+    }
+}
+
+#[post("/load_sessions", format = "json", data = "<contract_input>")]
+fn load_sessions(contract_input: Json<ContractInput>) -> JsonValue {
+    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
+
+    let eid = get_eid();
+    let mut retval = sgx_status_t::SGX_SUCCESS;
+
+    println!("----a----");
+    let input_string = serde_json::to_string(&*contract_input).unwrap();
+    println!("----b----");
+    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
+    let mut output_len : usize = 0;
+    let output_slice = &mut return_output_buf;
+    let output_ptr = output_slice.as_mut_ptr();
+    let output_len_ptr = &mut output_len as *mut usize;
+
+    let mut retval = sgx_status_t::SGX_SUCCESS;
+    let result = unsafe {
+        ecall_handle(
+            eid, &mut retval,
+            5,
+            input_string.as_ptr(), input_string.len(),
+            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
+        )
+    };
+
+    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
+    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
+
+    match result {
+        sgx_status_t::SGX_SUCCESS => {
+            json!(output_value)
+        },
+        _ => {
+            println!("[-] ECALL Enclave Failed {}!", result.as_str());
+            json!({
+                "status": "error",
+                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
+            })
+        }
+    }
+}
+
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
-        .mount("/", routes![test, register, status, transfer])
+        .mount("/", routes![test, register, status, transfer, dump_sessions, load_sessions])
 }
 
 fn main() { ;
@@ -425,7 +538,7 @@ fn main() { ;
     ENCLAVE.write().unwrap().replace(enclave);
 
     rocket().launch();
-    
+
     println!("Quit signal received, destroying enclave...");
     destroy_enclave();
 

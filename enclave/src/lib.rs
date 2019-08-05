@@ -31,7 +31,7 @@ extern crate secp256k1;
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
-extern crate rand;
+extern crate ring;
 
 use sgx_types::*;
 use sgx_tse::*;
@@ -55,7 +55,10 @@ use secp256k1::*;
 use secp256k1::curve::*;
 use sgx_rand::thread_rng;
 use secp256k1::{SecretKey, PublicKey};
-use rand::SeedableRng;
+use ring::aead::*;
+use ring::pbkdf2::*;
+use ring::rand::SystemRandom;
+use ring::rand::SecureRandom;
 
 mod cert;
 mod hex;
@@ -84,6 +87,13 @@ extern "C" {
         p_quote: *mut u8,
         maxlen: u32,
         p_quote_len: *mut u32
+    ) -> sgx_status_t;
+
+    pub fn ocall_dump_state(
+        ret_val: *mut sgx_status_t,
+        output_ptr : *mut u8,
+        output_len_ptr: *mut usize,
+        output_buf_len: usize
     ) -> sgx_status_t;
 }
 
@@ -173,7 +183,6 @@ fn parse_response_attn_report(resp : &[u8]) -> (String, String, String){
     // len_num == 0
     (attn_report, sig, sig_cert)
 }
-
 
 fn parse_response_sigrl(resp : &[u8]) -> Vec<u8> {
     println!("parse_response_sigrl");
@@ -511,6 +520,19 @@ const ACTION_TEST: u8 = 0;
 const ACTION_REGISTER: u8 = 1;
 const ACTION_STATUS: u8 = 2;
 const ACTION_TRANSFER: u8 = 3;
+const ACTION_DUMP_SESSIONS: u8 = 4;
+const ACTION_LOAD_SESSIONS: u8 = 5;
+
+#[no_mangle]
+pub extern "C" fn ecall_set_state(
+    input_ptr: *const u8, input_len: usize
+) -> sgx_status_t {
+    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
+    let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
+    let input = input_value.as_object().unwrap();
+
+    sgx_status_t::SGX_SUCCESS
+}
 
 #[no_mangle]
 pub extern "C" fn ecall_handle(
@@ -518,15 +540,22 @@ pub extern "C" fn ecall_handle(
     input_ptr: *const u8, input_len: usize,
     output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
 ) -> sgx_status_t {
+    println!("----1----");
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
+    println!("----2----");
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
+    println!("----3----");
     let input = input_value.as_object().unwrap();
+    println!("----4----");
     let payload = input_value.get("input").unwrap().as_object().unwrap();
+    println!("----5----");
 
     let result = match action {
         ACTION_REGISTER => register(payload),
-        ACTION_STATUS => status((payload)),
-        ACTION_TRANSFER => transfer((payload)),
+        ACTION_STATUS => status(payload),
+        ACTION_TRANSFER => transfer(payload),
+        ACTION_DUMP_SESSIONS => dump_sessions(payload),
+        ACTION_LOAD_SESSIONS => load_sessions(payload),
         _ => unknown()
     };
 
@@ -587,11 +616,7 @@ const DEFAULT_CURRENCY: u64 = 1000;
 fn register(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let mut seed: Vec<u8> = [0; 32].to_vec();
-    let mut os_rng = os::SgxRng::new().unwrap();
-    let mut seed: &[u32] = &[os_rng.next_u32(), os_rng.next_u32()];
-    let mut prng = rand::chacha::ChaChaRng::from_seed(seed);
-
+    let mut prng = sgx_rand::thread_rng();
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
 
@@ -619,7 +644,17 @@ fn register(input: &Map<String, Value>) -> Result<Value, Value> {
 fn status(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let account_name = input.get("account").unwrap().as_str().unwrap();
+    let account_name = match input.get("account") {
+        Some(n) => {
+            n.as_str().unwrap()
+        },
+        None => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+
     match sessions.get(&account_name.to_string()) {
         Some(r) => {
             return Ok(json!({
@@ -687,4 +722,88 @@ fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
         "account": s_pk,
         "quantity": json!(account_currency - quantity)
         }))
+}
+
+const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
+
+fn dump_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+    let serialized = serde_json::to_string(&*sessions).unwrap();
+
+    // Your private data
+    let content = serialized.as_bytes().to_vec();
+    println!("Content to encrypt's size {}", content.len());
+
+    // Additional data that you would like to send and it would not be encrypted but it would
+    // be signed
+    let additional_data: [u8; 0] = [];
+
+    // Ring uses the same input variable as output
+    let mut in_out = content.clone();
+
+    // The input/output variable need some space for a suffix
+    println!("Tag len {}", CHACHA20_POLY1305.tag_len());
+    for _ in 0..CHACHA20_POLY1305.tag_len() {
+        in_out.push(0);
+    }
+
+    // Opening key used to decrypt data
+    let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+
+    // Sealing key used to encrypt data
+    let sealing_key = SealingKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+
+    // Random data must be used only once per encryption
+    let mut nonce = vec![0; 12];
+
+    // Fill nonce with random data
+    let rand = SystemRandom::new();
+    rand.fill(&mut nonce).unwrap();
+
+    // Encrypt data into in_out variable
+    let output_size = seal_in_place(
+        &sealing_key,
+        Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+        Aad::from(&additional_data),
+        &mut in_out,
+        CHACHA20_POLY1305.tag_len()
+    ).unwrap();
+
+    Ok(json!({
+       "data": hex::encode_hex_compact(in_out.as_ref()),
+       "nonce": hex::encode_hex_compact(nonce.as_ref())
+    }))
+}
+
+fn load_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
+    // Additional data that you would like to send and it would not be encrypted but it would
+    // be signed
+    let additional_data: [u8; 0] = [];
+
+    // Opening key used to decrypt data
+    let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+
+    println!("----1----");
+    let nonce = hex::decode_hex(input.get("nonce").unwrap().as_str().unwrap());
+    println!("nonce len {}", nonce.len());
+    println!("----2----");
+    let mut in_out = hex::decode_hex(input.get("data").unwrap().as_str().unwrap());
+    println!("----3----");
+    let decrypted_data = open_in_place(
+        &opening_key,
+        Nonce::try_assume_unique_for_key(&nonce).unwrap(),
+        Aad::from(&additional_data),
+        0,
+        &mut in_out
+    ).unwrap();
+    println!("----4----");
+
+    let deserialized: Map<String, Value> = serde_json::from_slice(decrypted_data).unwrap();
+
+    println!("{}", serde_json::to_string_pretty(&deserialized).unwrap());
+
+    let mut sessions = SESSIONS.lock().unwrap();
+    std::mem::replace(&mut *sessions, deserialized);
+
+    Ok(json!({}))
 }
