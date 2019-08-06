@@ -616,7 +616,7 @@ const DEFAULT_CURRENCY: u64 = 1000;
 fn register(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let mut prng = sgx_rand::thread_rng();
+    let mut prng = os::SgxRng::new().unwrap();
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
 
