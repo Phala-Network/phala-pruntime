@@ -33,8 +33,10 @@ extern crate serde_json;
 extern crate lazy_static;
 extern crate ring;
 
+use std::backtrace::{self, PrintFormat};
 use sgx_types::*;
 use sgx_tse::*;
+//use sgx_trts::trts::{rsgx_raw_is_outside_enclave, rsgx_lfence};
 use sgx_tcrypto::*;
 use sgx_rand::*;
 
@@ -53,7 +55,6 @@ use itertools::Itertools;
 use serde_json::{Map, Value};
 use secp256k1::*;
 use secp256k1::curve::*;
-use sgx_rand::thread_rng;
 use secp256k1::{SecretKey, PublicKey};
 use ring::aead::*;
 use ring::pbkdf2::*;
@@ -616,7 +617,7 @@ const DEFAULT_CURRENCY: u64 = 1000;
 fn register(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
 
-    let mut prng = os::SgxRng::new().unwrap();
+    let mut prng = os::SgxRng::new().unwrap();;
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
 
@@ -724,78 +725,66 @@ fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
         }))
 }
 
-const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
+const SECRET: &[u8; 64] = b"24e3e78e1f15150cdbad02f3205f6dd024e3e78e1f15150cdbad02f3205f6dd0";
 
 fn dump_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
     let serialized = serde_json::to_string(&*sessions).unwrap();
 
+    println!("1");
+
     // Your private data
     let content = serialized.as_bytes().to_vec();
     println!("Content to encrypt's size {}", content.len());
-
-    // Additional data that you would like to send and it would not be encrypted but it would
-    // be signed
-    let additional_data: [u8; 0] = [];
+    println!("{}", serialized);
 
     // Ring uses the same input variable as output
     let mut in_out = content.clone();
-
-    // The input/output variable need some space for a suffix
-    println!("Tag len {}", CHACHA20_POLY1305.tag_len());
-    for _ in 0..CHACHA20_POLY1305.tag_len() {
-        in_out.push(0);
-    }
+    println!("in_out len {}", in_out.len());
 
     // Opening key used to decrypt data
-    let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+    let opening_key = ring::aead::chacha20_poly1305_openssh::OpeningKey::new(SECRET);
+    //let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
 
     // Sealing key used to encrypt data
-    let sealing_key = SealingKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+    let sealing_key = ring::aead::chacha20_poly1305_openssh::SealingKey::new(SECRET);
 
-    // Random data must be used only once per encryption
-    let mut nonce = vec![0; 12];
-
-    // Fill nonce with random data
-    let rand = SystemRandom::new();
-    rand.fill(&mut nonce).unwrap();
+    let mut tag = [0u8; ring::aead::chacha20_poly1305_openssh::TAG_LEN];
 
     // Encrypt data into in_out variable
-    let output_size = seal_in_place(
-        &sealing_key,
-        Nonce::try_assume_unique_for_key(&nonce).unwrap(),
-        Aad::from(&additional_data),
+    let () = sealing_key.seal_in_place(
+        64,
         &mut in_out,
-        CHACHA20_POLY1305.tag_len()
-    ).unwrap();
+        &mut tag
+    );
+    println!("in_out len {}", in_out.len());
 
     Ok(json!({
        "data": hex::encode_hex_compact(in_out.as_ref()),
-       "nonce": hex::encode_hex_compact(nonce.as_ref())
+       "nonce": hex::encode_hex_compact(tag.as_ref())
     }))
+//    Ok(json!({}))
 }
 
 fn load_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
-    // Additional data that you would like to send and it would not be encrypted but it would
-    // be signed
-    let additional_data: [u8; 0] = [];
-
     // Opening key used to decrypt data
-    let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
+    let opening_key = ring::aead::chacha20_poly1305_openssh::OpeningKey::new(SECRET);
 
     println!("----1----");
     let nonce = hex::decode_hex(input.get("nonce").unwrap().as_str().unwrap());
     println!("nonce len {}", nonce.len());
+    let mut nonce_arr= [0u8; 16];
+    nonce_arr.copy_from_slice(&nonce[..16]);
     println!("----2----");
+    println!("{}", input.get("data").unwrap().as_str().unwrap());
     let mut in_out = hex::decode_hex(input.get("data").unwrap().as_str().unwrap());
     println!("----3----");
-    let decrypted_data = open_in_place(
-        &opening_key,
-        Nonce::try_assume_unique_for_key(&nonce).unwrap(),
-        Aad::from(&additional_data),
-        0,
-        &mut in_out
+    let decrypted_data = opening_key.open_in_place(
+        64,
+        &mut in_out,
+        &nonce_arr
     ).unwrap();
+    println!("{}", String::from_utf8(decrypted_data.to_vec()).unwrap());
     println!("----4----");
 
     let deserialized: Map<String, Value> = serde_json::from_slice(decrypted_data).unwrap();
