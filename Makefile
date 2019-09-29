@@ -88,7 +88,7 @@ App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
 App_SRC_Files := $(shell find app/ -type f -name '*.rs') $(shell find app/ -type f -name 'Cargo.toml')
 
 App_Rust_Path := ./app/target/release
-App_Enclave_u_Object :=app/libEnclave_u.a
+App_Enclave_u_Object := app/libEnclave_u.a
 App_Name := bin/app
 
 ######## Enclave Settings ########

@@ -1,5 +1,4 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-#![feature(option_replace)]
 
 extern crate sgx_types;
 extern crate sgx_urts;
@@ -250,18 +249,14 @@ fn init_enclave() -> SgxResult<SgxEnclave> {
     Ok(enclave)
 }
 
-#[get("/test")]
-fn test() -> JsonValue {
+#[post("/test", format = "json", data = "<contract_input>")]
+fn test(contract_input: Json<ContractInput>) -> JsonValue {
+    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
+
     let eid = get_eid();
     let mut retval = sgx_status_t::SGX_SUCCESS;
 
-    // Mock
-    let mut input = serde_json::Map::new();
-    input.insert("name".to_string(), json!("David".to_string()).0);
-    input.insert("id".to_string(), json!("123456".to_string()).0);
-    input.insert("email".to_string(), json!("david@foo.com".to_string()).0);
-    let input_string = json!(input).to_string();
-
+    let input_string = serde_json::to_string(&*contract_input).unwrap();
     let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
     let mut output_len : usize = 0;
     let output_slice = &mut return_output_buf;
@@ -295,24 +290,19 @@ fn test() -> JsonValue {
     }
 }
 
-#[post("/register", format = "json", data = "<contract_input>")]
-fn register(contract_input: Json<ContractInput>) -> JsonValue {
+#[post("/dump_states", format = "json", data = "<contract_input>")]
+fn dump_states(contract_input: Json<ContractInput>) -> JsonValue {
     println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
 
     let eid = get_eid();
     let mut retval = sgx_status_t::SGX_SUCCESS;
 
-    println!("----a----");
     let input_string = serde_json::to_string(&*contract_input).unwrap();
-    println!("----b----");
-
     let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
     let mut output_len : usize = 0;
     let output_slice = &mut return_output_buf;
     let output_ptr = output_slice.as_mut_ptr();
     let output_len_ptr = &mut output_len as *mut usize;
-
-    println!("----c----");
 
     let mut retval = sgx_status_t::SGX_SUCCESS;
     let result = unsafe {
@@ -324,13 +314,8 @@ fn register(contract_input: Json<ContractInput>) -> JsonValue {
         )
     };
 
-    println!("----d----");
-
-    println!("output len {} retval {}", output_len, retval);
     let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
     let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
-
-    println!("----e----");
 
     match result {
         sgx_status_t::SGX_SUCCESS => {
@@ -346,15 +331,14 @@ fn register(contract_input: Json<ContractInput>) -> JsonValue {
     }
 }
 
-#[post("/status", format = "json", data = "<contract_input>")]
-fn status(contract_input: Json<ContractInput>) -> JsonValue {
+#[post("/load_states", format = "json", data = "<contract_input>")]
+fn load_states(contract_input: Json<ContractInput>) -> JsonValue {
     println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
 
     let eid = get_eid();
     let mut retval = sgx_status_t::SGX_SUCCESS;
 
     let input_string = serde_json::to_string(&*contract_input).unwrap();
-
     let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
     let mut output_len : usize = 0;
     let output_slice = &mut return_output_buf;
@@ -388,137 +372,9 @@ fn status(contract_input: Json<ContractInput>) -> JsonValue {
     }
 }
 
-#[post("/transfer", format = "json", data = "<contract_input>")]
-fn transfer(contract_input: Json<ContractInput>) -> JsonValue {
-    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
-
-    let eid = get_eid();
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-
-    let input_string = serde_json::to_string(&*contract_input).unwrap();
-
-    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
-    let mut output_len : usize = 0;
-    let output_slice = &mut return_output_buf;
-    let output_ptr = output_slice.as_mut_ptr();
-    let output_len_ptr = &mut output_len as *mut usize;
-
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe {
-        ecall_handle(
-            eid, &mut retval,
-            3,
-            input_string.as_ptr(), input_string.len(),
-            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
-        )
-    };
-
-    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
-    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
-
-    match result {
-        sgx_status_t::SGX_SUCCESS => {
-            json!(output_value)
-        },
-        _ => {
-            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-            json!({
-                "status": "error",
-                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
-            })
-        }
-    }
-}
-
-#[post("/dump_sessions", format = "json", data = "<contract_input>")]
-fn dump_sessions(contract_input: Json<ContractInput>) -> JsonValue {
-    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
-
-    let eid = get_eid();
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-
-    println!("----a----");
-    let input_string = serde_json::to_string(&*contract_input).unwrap();
-    println!("----b----");
-    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
-    let mut output_len : usize = 0;
-    let output_slice = &mut return_output_buf;
-    let output_ptr = output_slice.as_mut_ptr();
-    let output_len_ptr = &mut output_len as *mut usize;
-
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe {
-        ecall_handle(
-            eid, &mut retval,
-            4,
-            input_string.as_ptr(), input_string.len(),
-            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
-        )
-    };
-
-    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
-    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
-
-    match result {
-        sgx_status_t::SGX_SUCCESS => {
-            json!(output_value)
-        },
-        _ => {
-            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-            json!({
-                "status": "error",
-                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
-            })
-        }
-    }
-}
-
-#[post("/load_sessions", format = "json", data = "<contract_input>")]
-fn load_sessions(contract_input: Json<ContractInput>) -> JsonValue {
-    println!("{}", ::serde_json::to_string_pretty(&*contract_input).unwrap());
-
-    let eid = get_eid();
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-
-    println!("----a----");
-    let input_string = serde_json::to_string(&*contract_input).unwrap();
-    println!("----b----");
-    let mut return_output_buf: [u8; ENCLAVE_OUTPUT_BUF_MAX_LEN] = [0; ENCLAVE_OUTPUT_BUF_MAX_LEN];
-    let mut output_len : usize = 0;
-    let output_slice = &mut return_output_buf;
-    let output_ptr = output_slice.as_mut_ptr();
-    let output_len_ptr = &mut output_len as *mut usize;
-
-    let mut retval = sgx_status_t::SGX_SUCCESS;
-    let result = unsafe {
-        ecall_handle(
-            eid, &mut retval,
-            5,
-            input_string.as_ptr(), input_string.len(),
-            output_ptr, output_len_ptr, ENCLAVE_OUTPUT_BUF_MAX_LEN
-        )
-    };
-
-    let output_slice = unsafe { std::slice::from_raw_parts(output_ptr, output_len) };
-    let output_value: serde_json::value::Value = serde_json::from_slice(output_slice).unwrap();
-
-    match result {
-        sgx_status_t::SGX_SUCCESS => {
-            json!(output_value)
-        },
-        _ => {
-            println!("[-] ECALL Enclave Failed {}!", result.as_str());
-            json!({
-                "status": "error",
-                "payload": format!("[-] ECALL Enclave Failed {}!", result.as_str())
-            })
-        }
-    }
-}
-
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
-        .mount("/", routes![test, register, status, transfer, dump_sessions, load_sessions])
+        .mount("/", routes![test, dump_states, load_states])
 }
 
 fn main() { ;

@@ -518,11 +518,8 @@ fn create_attestation_report(report_data_payload: &[u8]) -> Result<(String, Stri
 }
 
 const ACTION_TEST: u8 = 0;
-const ACTION_REGISTER: u8 = 1;
-const ACTION_STATUS: u8 = 2;
-const ACTION_TRANSFER: u8 = 3;
-const ACTION_DUMP_SESSIONS: u8 = 4;
-const ACTION_LOAD_SESSIONS: u8 = 5;
+const ACTION_DUMP_STATES: u8 = 1;
+const ACTION_LOAD_STATES: u8 = 2;
 
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
@@ -541,22 +538,15 @@ pub extern "C" fn ecall_handle(
     input_ptr: *const u8, input_len: usize,
     output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
 ) -> sgx_status_t {
-    println!("----1----");
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
-    println!("----2----");
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
-    println!("----3----");
     let input = input_value.as_object().unwrap();
-    println!("----4----");
     let payload = input_value.get("input").unwrap().as_object().unwrap();
-    println!("----5----");
 
     let result = match action {
-        ACTION_REGISTER => register(payload),
-        ACTION_STATUS => status(payload),
-        ACTION_TRANSFER => transfer(payload),
-        ACTION_DUMP_SESSIONS => dump_sessions(payload),
-        ACTION_LOAD_SESSIONS => load_sessions(payload),
+        ACTION_TEST => test(payload),
+        ACTION_DUMP_STATES => dump_states(payload),
+        ACTION_LOAD_STATES => load_states(payload),
         _ => unknown()
     };
 
@@ -612,187 +602,14 @@ fn unknown() -> Result<Value, Value> {
     }))
 }
 
-const DEFAULT_CURRENCY: u64 = 1000;
-
-fn register(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
-
-    let mut prng = os::SgxRng::new().unwrap();;
-    let sk = SecretKey::random(&mut prng);
-    let pk = PublicKey::from_secret_key(&sk);
-
-    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
-    let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
-
-    let account_currency = match sessions.get(&s_pk) {
-        Some(r) => {
-            r.as_u64().unwrap()
-        },
-        None => {
-            DEFAULT_CURRENCY
-        }
-    };
-
-    sessions.insert(s_pk.clone(), json!(account_currency));
-
-    Ok(json!({
-        "quantity": json!(account_currency),
-        "account": s_pk,
-        "sk": s_sk
-        }))
+fn test(input: &Map<String, Value>) -> Result<Value, Value> {
+    Ok(json!({}))
 }
 
-fn status(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
-
-    let account_name = match input.get("account") {
-        Some(n) => {
-            n.as_str().unwrap()
-        },
-        None => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
-
-    match sessions.get(&account_name.to_string()) {
-        Some(r) => {
-            return Ok(json!({
-                "account": account_name,
-                "quantity": json!(r.as_u64().unwrap())
-            }))
-        },
-        None => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
+fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
+    Ok(json!({}))
 }
 
-fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
-
-    let s_sk = input.get("sk").unwrap().as_str().unwrap();
-    let sk = match SecretKey::parse_slice(hex::decode_hex(s_sk).as_slice()) {
-        Ok(r) => {
-            r
-        },
-        _ => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
-
-    let pk = PublicKey::from_secret_key(&sk);
-    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
-
-    let account_currency = match sessions.get(&s_pk) {
-        Some(r) => {
-            r.as_u64().unwrap()
-        },
-        None => {
-            0
-        }
-    };
-
-    let quantity = input.get("quantity").unwrap().as_u64().unwrap();
-
-    if account_currency < quantity {
-        return Err(json!({
-                "message": "Insufficient currency"
-            }))
-    }
-
-    let to_account_name = input.get("to_account").unwrap().as_str().unwrap();
-    let to_account_currency = match sessions.get(&to_account_name.to_string()) {
-        Some(r) => {
-            r.as_u64().unwrap()
-        },
-        None => {
-            0
-        }
-    };
-
-    sessions.insert(s_pk.clone(), json!(account_currency - quantity));
-    sessions.insert(to_account_name.to_string(), json!(to_account_currency + quantity));
-
-    Ok(json!({
-        "account": s_pk,
-        "quantity": json!(account_currency - quantity)
-        }))
-}
-
-const SECRET: &[u8; 64] = b"24e3e78e1f15150cdbad02f3205f6dd024e3e78e1f15150cdbad02f3205f6dd0";
-
-fn dump_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
-    let serialized = serde_json::to_string(&*sessions).unwrap();
-
-    println!("1");
-
-    // Your private data
-    let content = serialized.as_bytes().to_vec();
-    println!("Content to encrypt's size {}", content.len());
-    println!("{}", serialized);
-
-    // Ring uses the same input variable as output
-    let mut in_out = content.clone();
-    println!("in_out len {}", in_out.len());
-
-    // Opening key used to decrypt data
-    let opening_key = ring::aead::chacha20_poly1305_openssh::OpeningKey::new(SECRET);
-    //let opening_key = OpeningKey::new(&CHACHA20_POLY1305, SECRET).unwrap();
-
-    // Sealing key used to encrypt data
-    let sealing_key = ring::aead::chacha20_poly1305_openssh::SealingKey::new(SECRET);
-
-    let mut tag = [0u8; ring::aead::chacha20_poly1305_openssh::TAG_LEN];
-
-    // Encrypt data into in_out variable
-    let () = sealing_key.seal_in_place(
-        64,
-        &mut in_out,
-        &mut tag
-    );
-    println!("in_out len {}", in_out.len());
-
-    Ok(json!({
-       "data": hex::encode_hex_compact(in_out.as_ref()),
-       "nonce": hex::encode_hex_compact(tag.as_ref())
-    }))
-//    Ok(json!({}))
-}
-
-fn load_sessions(input: &Map<String, Value>) -> Result<Value, Value> {
-    // Opening key used to decrypt data
-    let opening_key = ring::aead::chacha20_poly1305_openssh::OpeningKey::new(SECRET);
-
-    println!("----1----");
-    let nonce = hex::decode_hex(input.get("nonce").unwrap().as_str().unwrap());
-    println!("nonce len {}", nonce.len());
-    let mut nonce_arr= [0u8; 16];
-    nonce_arr.copy_from_slice(&nonce[..16]);
-    println!("----2----");
-    println!("{}", input.get("data").unwrap().as_str().unwrap());
-    let mut in_out = hex::decode_hex(input.get("data").unwrap().as_str().unwrap());
-    println!("----3----");
-    let decrypted_data = opening_key.open_in_place(
-        64,
-        &mut in_out,
-        &nonce_arr
-    ).unwrap();
-    println!("{}", String::from_utf8(decrypted_data.to_vec()).unwrap());
-    println!("----4----");
-
-    let deserialized: Map<String, Value> = serde_json::from_slice(decrypted_data).unwrap();
-
-    println!("{}", serde_json::to_string_pretty(&deserialized).unwrap());
-
-    let mut sessions = SESSIONS.lock().unwrap();
-    std::mem::replace(&mut *sessions, deserialized);
-
+fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
     Ok(json!({}))
 }

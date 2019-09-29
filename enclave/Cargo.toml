@@ -31,7 +31,8 @@ ring        = { git = "https://github.com/mesalock-linux/ring-sgx", tag = "v0.16
 rustls      = { git = "https://github.com/mesalock-linux/rustls", branch = "mesalock_sgx" }
 webpki-roots= { git = "https://github.com/mesalock-linux/webpki-roots", branch = "mesalock_sgx" }
 serde       = { git = "https://github.com/mesalock-linux/serde-sgx" }
-serde_json  = { git = "https://github.com/mesalock-linux/serde-json-sgx" }
+# serde_json  = { git = "https://github.com/mesalock-linux/serde-json-sgx.git" }
+serde_json = { path = "/home/jasl/Workspaces/serde-json-sgx"}
 lazy_static = { version = "*", default-features = false, features = ["spin_no_std"] }
 libsecp256k1= { git = "https://github.com/mesalock-linux/libsecp256k1-rs-sgx" }
 
