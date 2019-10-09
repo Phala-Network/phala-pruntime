@@ -42,6 +42,7 @@ use sgx_rand::*;
 
 use std::prelude::v1::*;
 use std::sync::Arc;
+use std::mem;
 use std::net::TcpStream;
 use std::string::String;
 use std::ptr;
@@ -54,11 +55,7 @@ use std::sync::SgxMutex;
 use itertools::Itertools;
 use serde_json::{Map, Value};
 use secp256k1::*;
-use secp256k1::curve::*;
 use secp256k1::{SecretKey, PublicKey};
-use ring::aead::*;
-use ring::pbkdf2::*;
-use ring::rand::SystemRandom;
 use ring::rand::SecureRandom;
 
 mod cert;
@@ -98,10 +95,28 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
+struct GlobalState {
+    initialized: bool,
+    public_key: Box<PublicKey>,
+    private_key: Box<SecretKey>
+}
+
 lazy_static! {
     static ref SESSIONS: SgxMutex<Map<String, Value>> = {
         let mut m = Map::new();
         SgxMutex::new(m)
+    };
+
+    static ref GLOBAL_STATE: SgxMutex<GlobalState> = {
+        // TODO: Hard code init value
+        let sk = SecretKey::parse_slice(hex::decode_hex("8431d995681fc0a8576a56bbc2e24a322f84b1408d4bf35694c325c9407dd2e8").as_slice()).unwrap();
+        let pk = PublicKey::from_secret_key(&sk);
+
+        SgxMutex::new(
+            GlobalState {
+                initialized: false, public_key: Box::new(pk), private_key: Box::new(sk)
+            }
+        )
     };
 }
 
@@ -518,8 +533,13 @@ fn create_attestation_report(report_data_payload: &[u8]) -> Result<(String, Stri
 }
 
 const ACTION_TEST: u8 = 0;
-const ACTION_DUMP_STATES: u8 = 1;
-const ACTION_LOAD_STATES: u8 = 2;
+const ACTION_INIT_RUNTIME: u8 = 1;
+const ACTION_GET_INFO: u8 = 2;
+const ACTION_DUMP_STATES: u8 = 3;
+const ACTION_LOAD_STATES: u8 = 4;
+const ACTION_REGISTER: u8 = 11;
+const ACTION_STATUS: u8 = 12;
+const ACTION_TRANSFER: u8 = 13;
 
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
@@ -545,38 +565,63 @@ pub extern "C" fn ecall_handle(
 
     let result = match action {
         ACTION_TEST => test(payload),
+        ACTION_INIT_RUNTIME => init_runtime(payload),
+        ACTION_GET_INFO => get_info(payload),
         ACTION_DUMP_STATES => dump_states(payload),
         ACTION_LOAD_STATES => load_states(payload),
+        ACTION_REGISTER => register(payload),
+        ACTION_STATUS => status(payload),
+        ACTION_TRANSFER => transfer(payload),
         _ => unknown()
     };
 
-    let nonce = input_value.get("nonce").unwrap().as_object().unwrap();
-    let nonce_vec = serde_json::to_vec(&nonce).unwrap();
-    let (attn_report, sig, cert) = create_attestation_report(&nonce_vec).unwrap();
-    let mut map = serde_json::Map::new();
-    map.insert("report".to_owned(), json!(attn_report));
-    map.insert("signature".to_owned(), json!(sig));
-    map.insert("signing_cert".to_owned(), json!(cert));
+    let global_state = GLOBAL_STATE.lock().unwrap();
+
+//    let nonce = input_value.get("nonce").unwrap().as_object().unwrap();
+//    let nonce_vec = serde_json::to_vec(&nonce).unwrap();
+//    let (attn_report, sig, cert) = create_attestation_report(&nonce_vec).unwrap();
+//    let mut map = serde_json::Map::new();
+//    map.insert("report".to_owned(), json!(attn_report));
+//    map.insert("signature".to_owned(), json!(sig));
+//    map.insert("signing_cert".to_owned(), json!(cert));
 
     let output_json = match result {
-        Ok(payload) => json!({
-            "status": "ok",
-            "payload": payload.to_string(),
-            "attestation": {
-                "version": 1,
-                "provider": "SGX",
-                "payload": map
-            }
-        }),
-        Err(payload) => json!({
-            "status": "error",
-            "payload": payload.to_string(),
-            "attestation": {
-                "version": 1,
-                "provider": "SGX",
-                "payload": map
-            }
-        })
+        Ok(payload) => {
+            let s_payload = payload.to_string();
+
+            let hash_payload = rsgx_sha256_slice(&s_payload.as_bytes()).unwrap();
+            let message = secp256k1::Message::parse_slice(&hash_payload[..32]).unwrap();
+            let (signature, _recovery_id) = secp256k1::sign(&message, &global_state.private_key);
+
+            json!({
+                "status": "ok",
+                "payload": s_payload,
+                "signature": hex::encode_hex_compact(signature.serialize().as_ref()),
+//                "attestation": {
+//                    "version": 1,
+//                    "provider": "SGX",
+//                    "payload": map
+//                }
+            })
+        },
+        Err(payload) => {
+            let s_payload = payload.to_string();
+
+            let hash_payload = rsgx_sha256_slice(&s_payload.as_bytes()).unwrap();
+            let message = secp256k1::Message::parse_slice(&hash_payload[..32]).unwrap();
+            let (signature, _recovery_id) = secp256k1::sign(&message, &global_state.private_key);
+
+            json!({
+                "status": "error",
+                "payload": s_payload,
+                "signature": hex::encode_hex_compact(signature.serialize().as_ref()),
+//                "attestation": {
+//                    "version": 1,
+//                    "provider": "SGX",
+//                    "payload": map
+//                }
+            })
+        }
     };
     println!("{}", output_json.to_string());
 
@@ -606,10 +651,240 @@ fn test(input: &Map<String, Value>) -> Result<Value, Value> {
     Ok(json!({}))
 }
 
+const HARD_CODE_PASS: &[u8] = b"password";
+const HARD_CODE_IV: &[u8] = b"iv";
+const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
+
 fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
-    Ok(json!({}))
+    let mut sessions = SESSIONS.lock().unwrap();
+    let serialized = serde_json::to_string(&*sessions).unwrap();
+
+    // Your private data
+    let content = serialized.as_bytes().to_vec();
+    println!("Content to encrypt's size {}", content.len());
+    println!("{}", serialized);
+
+    // Ring uses the same input variable as output
+    let mut in_out = content.clone();
+    println!("in_out len {}", in_out.len());
+
+    // Random data must be used only once per encryption
+    let mut nonce_vec = [0 as u8; 12];
+
+    // Fill nonce with random data
+    let rand = ring::rand::SystemRandom::new();
+    rand.fill(&mut nonce_vec).unwrap();
+    let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_vec);
+
+    let unbound_key = ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, SECRET).unwrap();
+    let key = ring::aead::LessSafeKey::new(unbound_key);
+
+    key.seal_in_place_separate_tag(
+        nonce,
+        ring::aead::Aad::empty(),
+        &mut in_out
+    ).map(|tag| in_out.extend(tag.as_ref()));
+
+    Ok(json!({
+        "data": hex::encode_hex_compact(in_out.as_ref()),
+        "nonce": hex::encode_hex_compact(&nonce_vec)
+    }))
 }
 
 fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
+    let unbound_key = ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, SECRET).unwrap();
+    let key = ring::aead::LessSafeKey::new(unbound_key);
+
+    let nonce_vec = hex::decode_hex(input.get("nonce").unwrap().as_str().unwrap());
+    let mut nonce_arr= [0u8; 12];
+    nonce_arr.copy_from_slice(&nonce_vec[..12]);
+    let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_arr);
+
+    println!("{}", input.get("data").unwrap().as_str().unwrap());
+    let mut in_out = hex::decode_hex(input.get("data").unwrap().as_str().unwrap());
+    let decrypted_data = key.open_in_place(
+        nonce,
+        ring::aead::Aad::empty(),
+        &mut in_out,
+    ).unwrap();
+    println!("{}", String::from_utf8(decrypted_data.to_vec()).unwrap());
+
+    let deserialized: Map<String, Value> = serde_json::from_slice(decrypted_data).unwrap();
+
+    println!("{}", serde_json::to_string_pretty(&deserialized).unwrap());
+
+    let mut sessions = SESSIONS.lock().unwrap();
+    std::mem::replace(&mut *sessions, deserialized);
+
     Ok(json!({}))
+}
+
+fn init_runtime(input: &Map<String, Value>) -> Result<Value, Value> {
+    // TODO: Guard only initialize once
+    if GLOBAL_STATE.lock().unwrap().initialized {
+        return Err(json!({"message": "Already initialized"}))
+    }
+
+    let mut prng = os::SgxRng::new().unwrap();
+
+    let sk = SecretKey::random(&mut prng);
+    let pk = PublicKey::from_secret_key(&sk);
+
+    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("Error in create_attestation_report: {:?}", e);
+            return Err(json!({"message": "Error while connecting to IAS"}))
+        }
+    };
+
+    let mut global_state = GLOBAL_STATE.lock().unwrap();
+    (*global_state).initialized = true;
+    *global_state.public_key = pk.clone();
+    *global_state.private_key = sk.clone();
+
+    let mut map = serde_json::Map::new();
+    map.insert("report".to_owned(), json!(attn_report));
+    map.insert("signature".to_owned(), json!(sig));
+    map.insert("signing_cert".to_owned(), json!(cert));
+
+    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
+
+    Ok(
+        json!({
+            "public_key": s_pk,
+            "attestation": {
+                "version": 1,
+                "provider": "SGX",
+                "payload": map
+            }
+        })
+    )
+}
+
+fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
+    let global_state = GLOBAL_STATE.lock().unwrap();
+
+    let initialized = global_state.initialized;
+    let pk = &global_state.public_key;
+    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+
+    Ok(json!({
+        "initialized": initialized,
+        "public_key": s_pk
+    }))
+}
+
+const DEFAULT_CURRENCY: u64 = 1000;
+
+fn register(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let mut prng = os::SgxRng::new().unwrap();;
+    let sk = SecretKey::random(&mut prng);
+    let pk = PublicKey::from_secret_key(&sk);
+
+    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
+    let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
+
+    let account_currency = match sessions.get(&s_pk) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            DEFAULT_CURRENCY
+        }
+    };
+
+    sessions.insert(s_pk.clone(), json!(account_currency));
+
+    Ok(json!({
+        "quantity": json!(account_currency),
+        "account": s_pk,
+        "sk": s_sk
+        }))
+}
+
+fn status(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let account_name = match input.get("account") {
+        Some(n) => {
+            n.as_str().unwrap()
+        },
+        None => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+
+    match sessions.get(&account_name.to_string()) {
+        Some(r) => {
+            return Ok(json!({
+                "account": account_name,
+                "quantity": json!(r.as_u64().unwrap())
+            }))
+        },
+        None => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+}
+
+fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut sessions = SESSIONS.lock().unwrap();
+
+    let s_sk = input.get("sk").unwrap().as_str().unwrap();
+    let sk = match SecretKey::parse_slice(hex::decode_hex(s_sk).as_slice()) {
+        Ok(r) => {
+            r
+        },
+        _ => {
+            return Err(json!({
+                "message": "Unknown account"
+            }))
+        }
+    };
+
+    let pk = PublicKey::from_secret_key(&sk);
+    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
+
+    let account_currency = match sessions.get(&s_pk) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            0
+        }
+    };
+
+    let quantity = input.get("quantity").unwrap().as_u64().unwrap();
+
+    if account_currency < quantity {
+        return Err(json!({
+                "message": "Insufficient currency"
+            }))
+    }
+
+    let to_account_name = input.get("to_account").unwrap().as_str().unwrap();
+    let to_account_currency = match sessions.get(&to_account_name.to_string()) {
+        Some(r) => {
+            r.as_u64().unwrap()
+        },
+        None => {
+            0
+        }
+    };
+
+    sessions.insert(s_pk.clone(), json!(account_currency - quantity));
+    sessions.insert(to_account_name.to_string(), json!(to_account_currency + quantity));
+
+    Ok(json!({
+        "account": s_pk,
+        "quantity": json!(account_currency - quantity)
+        }))
 }
