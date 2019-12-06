@@ -538,9 +538,8 @@ const ACTION_INIT_RUNTIME: u8 = 1;
 const ACTION_GET_INFO: u8 = 2;
 const ACTION_DUMP_STATES: u8 = 3;
 const ACTION_LOAD_STATES: u8 = 4;
-const ACTION_REGISTER: u8 = 11;
-const ACTION_STATUS: u8 = 12;
-const ACTION_TRANSFER: u8 = 13;
+const ACTION_SET: u8 = 21;
+const ACTION_GET: u8 = 22;
 
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
@@ -570,9 +569,8 @@ pub extern "C" fn ecall_handle(
         ACTION_GET_INFO => get_info(payload),
         ACTION_DUMP_STATES => dump_states(payload),
         ACTION_LOAD_STATES => load_states(payload),
-        ACTION_REGISTER => register(payload),
-        ACTION_STATUS => status(payload),
-        ACTION_TRANSFER => transfer(payload),
+        ACTION_GET => get(payload),
+        ACTION_SET => set(payload),
         _ => unknown()
     };
 
@@ -777,115 +775,33 @@ fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
     }))
 }
 
-const DEFAULT_CURRENCY: u64 = 1000;
-
-fn register(input: &Map<String, Value>) -> Result<Value, Value> {
+fn get(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
+    let key = input.get("key").unwrap().as_str().unwrap();
 
-    let mut prng = rand_os::OsRng::new().unwrap();
-    let sk = SecretKey::random(&mut prng);
-    let pk = PublicKey::from_secret_key(&sk);
-
-    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
-    let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
-
-    let account_currency = match sessions.get(&s_pk) {
+    let value = match sessions.get(&key.to_string()) {
         Some(r) => {
-            r.as_u64().unwrap()
+            r.as_str().unwrap()
         },
         None => {
-            DEFAULT_CURRENCY
+            ""
         }
     };
-
-    sessions.insert(s_pk.clone(), json!(account_currency));
 
     Ok(json!({
-        "quantity": json!(account_currency),
-        "account": s_pk,
-        "sk": s_sk
-        }))
+        "key": key.to_string(),
+        "value": value.to_string()
+    }))
 }
 
-fn status(input: &Map<String, Value>) -> Result<Value, Value> {
+fn set(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
-
-    let account_name = match input.get("account") {
-        Some(n) => {
-            n.as_str().unwrap()
-        },
-        None => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
-
-    match sessions.get(&account_name.to_string()) {
-        Some(r) => {
-            return Ok(json!({
-                "account": account_name,
-                "quantity": json!(r.as_u64().unwrap())
-            }))
-        },
-        None => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
-}
-
-fn transfer(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
-
-    let s_sk = input.get("sk").unwrap().as_str().unwrap();
-    let sk = match SecretKey::parse_slice(hex::decode_hex(s_sk).as_slice()) {
-        Ok(r) => {
-            r
-        },
-        _ => {
-            return Err(json!({
-                "message": "Unknown account"
-            }))
-        }
-    };
-
-    let pk = PublicKey::from_secret_key(&sk);
-    let s_pk = hex::encode_hex_compact(pk.serialize().as_ref());
-
-    let account_currency = match sessions.get(&s_pk) {
-        Some(r) => {
-            r.as_u64().unwrap()
-        },
-        None => {
-            0
-        }
-    };
-
-    let quantity = input.get("quantity").unwrap().as_u64().unwrap();
-
-    if account_currency < quantity {
-        return Err(json!({
-                "message": "Insufficient currency"
-            }))
-    }
-
-    let to_account_name = input.get("to_account").unwrap().as_str().unwrap();
-    let to_account_currency = match sessions.get(&to_account_name.to_string()) {
-        Some(r) => {
-            r.as_u64().unwrap()
-        },
-        None => {
-            0
-        }
-    };
-
-    sessions.insert(s_pk.clone(), json!(account_currency - quantity));
-    sessions.insert(to_account_name.to_string(), json!(to_account_currency + quantity));
+    let key = input.get("key").unwrap().as_str().unwrap();
+    let value = input.get("value").unwrap().as_str().unwrap();
+    sessions.insert(key.to_string(), json!(value.to_string()));
 
     Ok(json!({
-        "account": s_pk,
-        "quantity": json!(account_currency - quantity)
-        }))
+        "key": key.to_string(),
+        "value": value.to_string()
+    }))
 }
