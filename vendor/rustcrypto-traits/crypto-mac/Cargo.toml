@@ -1,0 +1,27 @@
+[package]
+name = "crypto-mac"
+version = "0.8.0"
+authors = ["RustCrypto Developers"]
+license = "MIT OR Apache-2.0"
+description = "Trait for Message Authentication Code (MAC) algorithms"
+documentation = "https://docs.rs/crypto-mac"
+repository = "https://github.com/RustCrypto/traits"
+keywords = ["crypto", "mac"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+generic-array = "0.12"
+subtle = { path = "../../subtle" }
+blobby = { path = "../../rustcrypto-utils/blobby", optional = true }
+sgx_tstd = { path = "../../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[features]
+dev = ["blobby"]
+std = ["mesalock_sgx"]
+mesalock_sgx = ["sgx_tstd"]
+
+[badges]
+travis-ci = { repository = "RustCrypto/traits" }
+
+[package.metadata.docs.rs]
+features = [ "std" ]

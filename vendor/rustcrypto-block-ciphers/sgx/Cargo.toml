@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "block-ciphers-sgx-test/app",
+    "block-ciphers-sgx-test/enclave",
+]

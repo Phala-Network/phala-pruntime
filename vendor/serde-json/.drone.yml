@@ -1,0 +1,1436 @@
+kind: pipeline
+name: jsonc1604HW
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604HWpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604HWarbitrary_precision
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604HWarbitrary_precisionpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604SW
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604SWpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604SWarbitrary_precision
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1604SWarbitrary_precisionpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804HW
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804HWpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804HWarbitrary_precision
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804HWarbitrary_precisionpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804SW
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804SWpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804SWarbitrary_precision
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonc1804SWarbitrary_precisionpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604HW
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604HWpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604HWarbitrary_precision
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604HWarbitrary_precisionpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604SW
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604SWpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604SWarbitrary_precision
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1604SWarbitrary_precisionpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1604-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804HW
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804HWpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804HWarbitrary_precision
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804HWarbitrary_precisionpreserve_order
+
+steps:
+- name: HW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: HW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: HW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804SW
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804SWpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features=" preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804SWarbitrary_precision
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision "' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx
+
+---
+
+
+kind: pipeline
+name: jsonx1804SWarbitrary_precisionpreserve_order
+
+steps:
+- name: SW-compile
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  commands:
+  - . /opt/sgxsdk/environment
+  - . /root/.cargo/env
+  - cd sgx && SGX_MODE=$SGX_MODE XARGO_SGX=$XARGO_SGX TEST_FEATURES='--features="arbitrary_precision preserve_order"' make -C json-sgx-test
+
+- name: SW-test
+  image: baiduxlab/sgx-rust:1804-1.0.9
+  environment:
+    SGX_MODE: SW
+    XARGO_SGX: 1
+  privileged: true
+  volumes:
+  - name: isgx
+    path: /dev/isgx
+  - name: aesmd
+    path: /var/run/aesmd/aesm.socket
+  commands:
+  - . /opt/sgxsdk/environment
+  - ls -l /dev/isgx
+  - ls -l /var/run/aesmd/aesm.socket
+  - cd sgx/json-sgx-test/bin && ./app
+
+volumes:
+- name: isgx
+  host:
+    path: /dev/isgx
+- name: aesmd
+  host:
+    path: /var/run/aesmd/aesm.socket
+
+node:
+  instance: sgx

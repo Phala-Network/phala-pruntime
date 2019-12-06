@@ -1,0 +1,11 @@
+pub mod aead_tests;
+pub mod agreement_tests;
+pub mod digest_tests;
+pub mod ecdsa_tests;
+pub mod ed25519_tests;
+pub mod hkdf_tests;
+pub mod hmac_tests;
+pub mod pbkdf2_tests;
+pub mod quic_tests;
+pub mod rsa_tests;
+pub mod signature_tests;

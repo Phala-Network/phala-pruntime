@@ -1,0 +1,30 @@
+[package]
+name = "jh-x86_64"
+version = "0.2.2"
+authors = ["The CryptoCorrosion Contributors"]
+license = "MIT/Apache-2.0"
+description = "Portable JH with optimizations for x86-64 cpus"
+documentation = "https://docs.rs/jh-x86_64"
+keywords = ["crypto", "jh", "hash", "digest"]
+categories = ["cryptography", "no-std"]
+repository = "https://github.com/cryptocorrosion/cryptocorrosion"
+edition = "2018"
+
+[dependencies]
+block-buffer = { path = "../../../rustcrypto-utils/block-buffer" }
+digest = { path = "../../../rustcrypto-traits/digest" }
+hex-literal = { path = "../../../rustcrypto-utils/hex-literal" }
+simd = { path = "../../../cryptocorrosion/utils-simd/ppv-lite86", version = "0.2" }
+
+[dev-dependencies]
+#digest = { version = "0.8", features = ["dev"] }
+
+[build-dependencies]
+cc = "1.0.3"
+
+[features]
+default = ["std"]
+std = []
+
+[badges]
+travis-ci = { repository = "cryptocorrosion/cryptocorrosion" }

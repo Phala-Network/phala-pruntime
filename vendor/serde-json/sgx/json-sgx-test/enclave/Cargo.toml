@@ -1,0 +1,27 @@
+[package]
+name = "Helloworldsampleenclave"
+version = "1.0.0"
+authors = ["Baidu"]
+
+[lib]
+name = "helloworldsampleenclave"
+crate-type = ["staticlib"]
+
+[features]
+default = ["raw_value", "unbounded_depth"]
+arbitrary_precision = ["serde_json/arbitrary_precision"]
+raw_value = ["serde_json/raw_value"]
+unbounded_depth = ["serde_json/unbounded_depth"]
+preserve_order = ["serde_json/preserve_order"]
+
+[dependencies]
+serde = { git = "https://github.com/mesalock-linux/serde-sgx" }
+serde_derive = { git = "https://github.com/mesalock-linux/serde-sgx" }
+serde_bytes = { git = "https://github.com/mesalock-linux/serde-bytes-sgx" }
+serde_json = { path = "../../.." }
+
+
+[target.'cfg(not(target_env = "sgx"))'.dependencies]
+sgx_types = { path = "../../../../../rust-sgx-sdk/sgx_types" }
+sgx_tstd = { path = "../../../../../rust-sgx-sdk/sgx_tstd" }
+sgx_tunittest = { path = "../../../../../rust-sgx-sdk/sgx_tunittest" }

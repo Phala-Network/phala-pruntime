@@ -1,0 +1,18 @@
+[package]
+name = "skein-hash"
+version = "0.3.0"
+authors = ["The CryptoCorrosion Contributors"]
+license = "MIT/Apache-2.0"
+description = "Skein hash functions"
+repository = "https://github.com/cryptocorrosion/hashes"
+keywords = ["crypto", "skein", "hash", "digest"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+block-buffer = { path = "../../../rustcrypto-utils/block-buffer" }
+block-padding = { path = "../../../rustcrypto-utils/block-padding"}
+digest = { path = "../../../rustcrypto-traits/digest" }
+threefish-cipher = { path = "../../block-ciphers/threefish" }
+
+[dev-dependencies]
+#digest = { version = "0.8", features = ["dev"] }

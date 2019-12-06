@@ -1,0 +1,19 @@
+[package]
+name = "block-buffer"
+version = "0.7.3"
+authors = ["RustCrypto Developers"]
+license = "MIT OR Apache-2.0"
+description = "Fixed size buffer for block processing of data"
+documentation = "https://docs.rs/block-buffer"
+repository = "https://github.com/RustCrypto/utils"
+keywords = ["block", "buffer"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+byteorder = { path = "../../byteorder" }
+byte-tools = { path = "../../rustcrypto-utils/byte-tools" }
+block-padding = { path = "../../rustcrypto-utils/block-padding" }
+generic-array = "0.12"
+
+[badges]
+travis-ci = { repository = "RustCrypto/utils" }

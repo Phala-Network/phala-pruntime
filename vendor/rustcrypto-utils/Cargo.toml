@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "blobby",
+    "block-buffer",
+    "block-padding",
+    "byte-tools",
+    "dbl",
+    "fake-simd",
+    "hex-literal",
+    "hex-literal/hex-literal-impl",
+    "opaque-debug",
+]

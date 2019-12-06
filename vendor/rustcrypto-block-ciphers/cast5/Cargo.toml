@@ -1,0 +1,24 @@
+[package]
+name = "cast5"
+version = "0.6.0"
+authors = ["RustCrypto Developers"]
+license = "MIT OR Apache-2.0"
+description = "CAST5 block cipher"
+documentation = "https://docs.rs/cast5"
+repository = "https://github.com/RustCrypto/block-ciphers"
+keywords = ["crypto", "cast5", "block-cipher"]
+categories = ["cryptography", "no-std"]
+
+[dependencies]
+block-cipher-trait = { path = "../../rustcrypto-traits/block-cipher-trait" }
+opaque-debug = "0.2"
+byteorder = { path = "../../byteorder" }
+
+[dev-dependencies]
+#block-cipher-trait = { version = "0.6", features = ["dev"] }
+
+[features]
+default = []
+
+[badges]
+travis-ci = { repository = "RustCrypto/block-ciphers" }

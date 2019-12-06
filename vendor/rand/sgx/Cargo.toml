@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "rand-sgx-test/app",
+    "rand-sgx-test/enclave",
+]

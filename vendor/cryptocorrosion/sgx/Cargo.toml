@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "cryptocorrosion-sgx-test/app",
+    "cryptocorrosion-sgx-test/enclave",
+]
+
+#[patch.crates-io]
+#c2-chacha = { path = "../stream-ciphers/chacha" }
+##crypto-simd = { path = "../utils-simd/crypto-simd" }
+#ppv-lite86 = { path = "../utils-simd/ppv-lite86" }
+##ppv-null = { path = "utils-simd/ppv-null" }
+#threefish-cipher = { path = "../block-ciphers/threefish" }

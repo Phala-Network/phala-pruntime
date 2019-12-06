@@ -1,0 +1,23 @@
+[package]
+name = "block-modes"
+version = "0.3.3"
+authors = ["RustCrypto Developers"]
+license = "MIT OR Apache-2.0"
+description = "Block cipher modes of operation"
+documentation = "https://docs.rs/block-modes"
+repository = "https://github.com/RustCrypto/block-ciphers"
+keywords = ["crypto", "block-cipher", "ciphers"]
+
+[dependencies]
+block-padding = { path = "../../rustcrypto-utils/block-padding" }
+block-cipher-trait = { path = "../../rustcrypto-traits/block-cipher-trait" }
+sgx_tstd = { path = "../../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[dev-dependencies]
+#aes-soft = "0.3"
+#hex-literal = "0.1"
+
+[features]
+default = ["std", "mesalock_sgx"]
+std = ["mesalock_sgx"]
+mesalock_sgx = ["sgx_tstd"]

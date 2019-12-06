@@ -1,0 +1,101 @@
+diff --git a/src/calendar.rs b/src/calendar.rs
+index a293f3e..4fccaea 100644
+--- a/src/calendar.rs
++++ b/src/calendar.rs
+@@ -69,7 +69,7 @@ fn days_before_year_since_unix_epoch(year: u64) -> Result<u64, Error> {
+     Ok(days_before_year_ad - DAYS_BEFORE_UNIX_EPOCH_AD)
+ }
+ 
+-fn days_before_year_ad(year: u64) -> u64 {
++pub fn days_before_year_ad(year: u64) -> u64 {
+     ((year - 1) * 365)
+         + ((year - 1) / 4)    // leap years are every 4 years,
+         - ((year - 1) / 100)  // except years divisible by 100,
+@@ -93,7 +93,7 @@ fn days_in_feb(year: u64) -> u64 {
+     }
+ }
+ 
+-const DAYS_BEFORE_UNIX_EPOCH_AD: u64 = 719162;
++pub const DAYS_BEFORE_UNIX_EPOCH_AD: u64 = 719162;
+ 
+ #[cfg(test)]
+ mod tests {
+diff --git a/src/name.rs b/src/name.rs
+index ec31a3e..08f70c9 100644
+--- a/src/name.rs
++++ b/src/name.rs
+@@ -464,7 +464,7 @@ fn general_name<'a>(input: &mut untrusted::Reader<'a>) -> Result<GeneralName<'a>
+     Ok(name)
+ }
+ 
+-fn presented_dns_id_matches_reference_dns_id(
++pub fn presented_dns_id_matches_reference_dns_id(
+     presented_dns_id: untrusted::Input, reference_dns_id: untrusted::Input,
+ ) -> Option<bool> {
+     presented_dns_id_matches_reference_dns_id_internal(
+diff --git a/src/signed_data.rs b/src/signed_data.rs
+index a9cd72b..8f9e01f 100644
+--- a/src/signed_data.rs
++++ b/src/signed_data.rs
+@@ -23,18 +23,18 @@ pub struct SignedData<'a> {
+     /// certificate, `tbsResponseData` in the case of an OCSP response, and the
+     /// data nested in the `digitally-signed` construct for TLS 1.2 signed
+     /// data.
+-    data: untrusted::Input<'a>,
++    pub data: untrusted::Input<'a>,
+ 
+     /// The value of the `AlgorithmIdentifier`. This would be
+     /// `signatureAlgorithm` in the case of an X.509 certificate or OCSP
+     /// response. This would have to be synthesized in the case of TLS 1.2
+     /// signed data, since TLS does not identify algorithms by ASN.1 OIDs.
+-    pub(crate) algorithm: untrusted::Input<'a>,
++    pub algorithm: untrusted::Input<'a>,
+ 
+     /// The value of the signature. This would be `signature` in an X.509
+     /// certificate or OCSP response. This would be the value of
+     /// `DigitallySigned.signature` for TLS 1.2 signed data.
+-    signature: untrusted::Input<'a>,
++    pub signature: untrusted::Input<'a>,
+ }
+ 
+ /// Parses the concatenation of "tbs||signatureAlgorithm||signature" that
+@@ -92,7 +92,7 @@ pub(crate) fn parse_signed_data<'a>(
+ /// ordering of the algorithms in `supported_algorithms` does not really matter,
+ /// but generally more common algorithms should go first, as it is scanned
+ /// linearly for matches.
+-pub(crate) fn verify_signed_data(
++pub fn verify_signed_data(
+     supported_algorithms: &[&SignatureAlgorithm], spki_value: untrusted::Input,
+     signed_data: &SignedData,
+ ) -> Result<(), Error> {
+diff --git a/src/webpki.rs b/src/webpki.rs
+index a3fd61e..0616569 100644
+--- a/src/webpki.rs
++++ b/src/webpki.rs
+@@ -28,7 +28,7 @@
+     anonymous_parameters,
+     box_pointers,
+     missing_copy_implementations,
+-    missing_docs,
++//    missing_docs,
+     trivial_casts,
+     trivial_numeric_casts,
+     unsafe_code,
+@@ -56,13 +56,13 @@ use std::prelude::v1::*;
+ extern crate std;
+ 
+ #[macro_use]
+-mod der;
++pub mod der;
+ 
+-mod calendar;
++pub mod calendar;
+ mod cert;
+ mod error;
+-mod name;
+-mod signed_data;
++pub mod name;
++pub mod signed_data;
+ mod time;
+ 
+ #[cfg(feature = "trust_anchor_util")]

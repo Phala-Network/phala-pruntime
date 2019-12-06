@@ -1,0 +1,38 @@
+[package]
+name = "libsecp256k1"
+description = "Pure Rust secp256k1 implementation."
+license = "Apache-2.0"
+version = "0.3.1"
+authors = ["Wei Tang <hi@that.world>"]
+repository = "https://github.com/sorpaas/libsecp256k1-rs"
+keywords = [ "crypto", "ECDSA", "secp256k1", "bitcoin", "no_std" ]
+edition = "2018"
+
+[lib]
+name = "secp256k1"
+
+[dependencies]
+rand = { path = "../rand" }
+hmac-drbg = { path = "../hmac-drbg" }
+sha2 = { path = "../rustcrypto-hashes/sha2" }
+digest = { path = "../rustcrypto-traits/digest" }
+typenum = "1.11"
+arrayref = "0.3"
+subtle = { path = "../subtle" }
+sgx_tstd = { path = "../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[dev-dependencies]
+#secp256k1-test = "0.7"
+#clear_on_drop = "0.2"
+#rand-test = { package = "rand", version = "0.4" }
+
+[features]
+default = ["std", "mesalock_sgx"]
+std = ["subtle/std", "rand/std", "mesalock_sgx"]
+mesalock_sgx = ["std", "sgx_tstd"]
+
+[workspace]
+members = [
+  "./gen/ecmult",
+  "./gen/genmult",
+]
