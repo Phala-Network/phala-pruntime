@@ -99,7 +99,8 @@ extern "C" {
 struct GlobalState {
     initialized: bool,
     public_key: Box<PublicKey>,
-    private_key: Box<SecretKey>
+    private_key: Box<SecretKey>,
+    blocknum: u32,
 }
 
 lazy_static! {
@@ -115,7 +116,10 @@ lazy_static! {
 
         SgxMutex::new(
             GlobalState {
-                initialized: false, public_key: Box::new(pk), private_key: Box::new(sk)
+                initialized: false,
+                public_key: Box::new(pk),
+                private_key: Box::new(sk),
+                blocknum: 0
             }
         )
     };
@@ -640,6 +644,15 @@ pub extern "C" fn ecall_handle(
     sgx_status_t::SGX_SUCCESS
 }
 
+
+// --------------------------------
+
+fn error_result(msg: &str) -> Result<Value, Value> {
+    Err(json!({
+        "message": msg
+    }))
+}
+
 fn unknown() -> Result<Value, Value> {
     Err(json!({
         "message": "Unknown action"
@@ -647,12 +660,16 @@ fn unknown() -> Result<Value, Value> {
 }
 
 fn test(input: &Map<String, Value>) -> Result<Value, Value> {
+    test_parse_block();
     Ok(json!({}))
 }
 
 const HARD_CODE_PASS: &[u8] = b"password";
 const HARD_CODE_IV: &[u8] = b"iv";
 const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
+
+const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
+const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
 
 fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = SESSIONS.lock().unwrap();
@@ -762,16 +779,159 @@ fn init_runtime(input: &Map<String, Value>) -> Result<Value, Value> {
     )
 }
 
+/*
+bf192ec197592fda420383b1db2676e5b409a58cad489cc5c35dd94390c65a584c10987af003bd853a29992021a2f1a617b798ad3a151a3e2cbd6e4029370b7c68ec05dc5c1a11c17373b8d18d498fc1da0e94c35bdb3adc8116efda35b6025f3a080661757261206962a60f00000000056175726101013e3e4b72e1a133d129799aeaf43884493b6c30530f04be95f61089d73f21de2709108c407b8cb891ac8dbd1a498f1b6792f54e6f3b4f499d2e7010c81a902d8404280401000bf07ca2cb6e0101d90456000000000000007b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a13000000087b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a130000008dff9b2ca754cb5e80036647aab3fd25ccc4e4236c9fecd61968f121141149a7c402ebd3cdd43779a7e8d9afffee1989197d343ed9e936721168305a6da09d0188dc3417d5058ec4b4503e0c12ea1a0a89be200fe98922423d4334014fa6b0ee7b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a1300000090a870eb3be217aa99476919b2864539830a622e82a9355d0f91f28a777372ecb0c3a1164f68246cfa5577682ab7505aff139681953fe0cc7457300a53807303d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae6900
+SignedBlock {
+    block: Block {
+        header: Header {
+            parent_hash: 0xbf192ec197592fda420383b1db2676e5b409a58cad489cc5c35dd94390c65a58,
+            number: 19,
+            state_root: 0x10987af003bd853a29992021a2f1a617b798ad3a151a3e2cbd6e4029370b7c68,
+            extrinsics_root: 0xec05dc5c1a11c17373b8d18d498fc1da0e94c35bdb3adc8116efda35b6025f3a,
+            digest: Digest {
+                logs: [
+                    DigestItem::PreRuntime([97, 117, 114, 97], [105, 98, 166, 15, 0, 0, 0, 0]),
+                    DigestItem::Seal([97, 117, 114, 97], [62, 62, 75, 114, 225, 161, 51, 209, 41, 121, 154, 234, 244, 56, 132, 73, 59, 108, 48, 83, 15, 4, 190, 149, 246, 16, 137, 215, 63, 33, 222, 39, 9, 16, 140, 64, 123, 140, 184, 145, 172, 141, 189, 26, 73, 143, 27, 103, 146, 245, 78, 111, 59, 79, 73, 157, 46, 112, 16, 200, 26, 144, 45, 132])
+                ]
+            }
+        },
+        extrinsics: [
+            UncheckedExtrinsic(None, Call::Timestamp(set(1575374454000,)))
+        ]
+    },
+    justification: Some([86, 0, 0, 0, 0, 0, 0, 0, 123, 150, 139, 63, 126, 202, 45, 248, 207, 57, 238, 140, 149, 56, 240, 46, 19, 97, 244, 77, 11, 128, 148, 80, 248, 80, 22, 118, 219, 40, 19, 26, 19, 0, 0, 0, 8, 123, 150, 139, 63, 126, 202, 45, 248, 207, 57, 238, 140, 149, 56, 240, 46, 19, 97, 244, 77, 11, 128, 148, 80, 248, 80, 22, 118, 219, 40, 19, 26, 19, 0, 0, 0, 141, 255, 155, 44, 167, 84, 203, 94, 128, 3, 102, 71, 170, 179, 253, 37, 204, 196, 228, 35, 108, 159, 236, 214, 25, 104, 241, 33, 20, 17, 73, 167, 196, 2, 235, 211, 205, 212, 55, 121, 167, 232, 217, 175, 255, 238, 25, 137, 25, 125, 52, 62, 217, 233, 54, 114, 17, 104, 48, 90, 109, 160, 157, 1, 136, 220, 52, 23, 213, 5, 142, 196, 180, 80, 62, 12, 18, 234, 26, 10, 137, 190, 32, 15, 233, 137, 34, 66, 61, 67, 52, 1, 79, 166, 176, 238, 123, 150, 139, 63, 126, 202, 45, 248, 207, 57, 238, 140, 149, 56, 240, 46, 19, 97, 244, 77, 11, 128, 148, 80, 248, 80, 22, 118, 219, 40, 19, 26, 19, 0, 0, 0, 144, 168, 112, 235, 59, 226, 23, 170, 153, 71, 105, 25, 178, 134, 69, 57, 131, 10, 98, 46, 130, 169, 53, 93, 15, 145, 242, 138, 119, 115, 114, 236, 176, 195, 161, 22, 79, 104, 36, 108, 250, 85, 119, 104, 42, 183, 80, 90, 255, 19, 150, 129, 149, 63, 224, 204, 116, 87, 48, 10, 83, 128, 115, 3, 209, 124, 45, 120, 35, 235, 242, 96, 253, 19, 143, 45, 126, 39, 209, 20, 192, 20, 93, 150, 139, 95, 245, 0, 97, 37, 242, 65, 79, 173, 174, 105, 0])
+}
+*/
+
+extern crate codec;
+extern crate runtime as chain;
+use crate::codec::Decode;
+
+extern crate sp_runtime;
+use crate::sp_runtime::generic::Header;
+
+use std::fmt;
+
+fn fmt_call(call: &chain::Call) -> String {
+    match call {
+        chain::Call::Timestamp(chain::TimestampCall::set(t)) =>
+            format!("Timestamp::set({})", t),
+        chain::Call::Balances(chain::BalancesCall::transfer(to, amount)) =>
+            format!("Balance::transfer({:?}, {:?})", to, amount),
+        _ => String::from("<Unparsed>")
+    }
+}
+
+fn print_block(signed_block: &chain::SignedBlock) {
+    let header: &chain::Header = &signed_block.block.header;
+    let extrinsics: &Vec<chain::UncheckedExtrinsic> = &signed_block.block.extrinsics;
+
+    println!("SignedBlock {{");
+    println!("  block {{");
+    println!("    header {{");
+    println!("      number: {}", header.number);
+    println!("      extrinsics_root: {}", header.extrinsics_root);
+    println!("      state_root: {}", header.state_root);
+    println!("      parent_hash: {}", header.parent_hash);
+    println!("      digest: logs[{}]", header.digest.logs.len());
+    println!("  extrinsics: [");
+    for extrinsic in extrinsics {
+        println!("    UncheckedExtrinsic {{");
+        println!("      function: {}", fmt_call(&extrinsic.function));
+        println!("      signature: {:?}", extrinsic.signature);
+        println!("    }}");
+    }
+    println!("  ]");
+    println!("  justification: <skipped...>");
+    println!("}}");
+}
+
+fn parse_block(data: &Vec<u8>) -> Result<chain::SignedBlock, crate::codec::Error> {
+    chain::SignedBlock::decode(&mut data.as_slice())
+}
+
+fn test_parse_block() {
+    // let raw_block: Vec<u8> = hex::decode_hex("00");
+    let raw_block: Vec<u8> = hex::decode_hex("bf192ec197592fda420383b1db2676e5b409a58cad489cc5c35dd94390c65a584c10987af003bd853a29992021a2f1a617b798ad3a151a3e2cbd6e4029370b7c68ec05dc5c1a11c17373b8d18d498fc1da0e94c35bdb3adc8116efda35b6025f3a080661757261206962a60f00000000056175726101013e3e4b72e1a133d129799aeaf43884493b6c30530f04be95f61089d73f21de2709108c407b8cb891ac8dbd1a498f1b6792f54e6f3b4f499d2e7010c81a902d8404280401000bf07ca2cb6e0101d90456000000000000007b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a13000000087b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a130000008dff9b2ca754cb5e80036647aab3fd25ccc4e4236c9fecd61968f121141149a7c402ebd3cdd43779a7e8d9afffee1989197d343ed9e936721168305a6da09d0188dc3417d5058ec4b4503e0c12ea1a0a89be200fe98922423d4334014fa6b0ee7b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a1300000090a870eb3be217aa99476919b2864539830a622e82a9355d0f91f28a777372ecb0c3a1164f68246cfa5577682ab7505aff139681953fe0cc7457300a53807303d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae6900");
+    println!("SignedBlock data[{}]", raw_block.len());
+    let block = match parse_block(&raw_block) {
+        Ok(b) => b,
+        Err(err) => {
+            println!("***** Failed to parse block ({:?})", err);
+            return;
+        }
+    };
+    print_block(&block);
+}
+
+const CONTRACT_ONE: u32 = 1;
+
+fn handle_execution(origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
+                    contract_id: u32, payload: &Vec<u8>) {
+    if contract_id != CONTRACT_ONE {
+        println!("Skipped unknown contract: {}", contract_id);
+        return
+    }
+    let object: serde_json::value::Value = serde_json::from_slice(payload.as_slice()).unwrap();
+    // TODO: handle error ^^
+    
+    // TODO: handle the blockchain originated contract here
+}
+
+fn dispatch(block: &chain::SignedBlock) {
+    for xt in &block.block.extrinsics {
+        if let chain::Call::Execution(chain::ExecutionCall::push_command(contract_id, payload)) = &xt.function {
+            println!("push_command(contract_id: {}, payload: data[{}])", contract_id, payload.len());
+            handle_execution(xt.signature.clone(), *contract_id, payload);
+        }
+        // skip other unknown extrinsics
+    }
+}
+
+fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
+    /*
+        input: {
+            data: "<b64 encoded plain data>"
+        }
+    */
+    let block_b64 = input.get("data").unwrap().as_str().unwrap();
+    let block_data = base64::decode(block_b64).unwrap();
+    // TODO: handle error ^^
+
+    let block = match parse_block(&block_data) {
+        Ok(b) => b,
+        Err(err) => return error_result("Invalid block (err)")
+    };
+
+    // it's the block needed
+    let mut global_state = GLOBAL_STATE.lock().unwrap();
+    if block.block.header.number != global_state.blocknum {
+        return error_result("Unexpected block")
+    }
+
+    // TODO: validate the block (light client validation logic here)
+
+    // trigger updates
+    dispatch(&block);
+    
+    // move forward
+    (*global_state).blocknum = block.block.header.number + 1;
+
+    Ok(json!({}))
+}
+
 fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
     let global_state = GLOBAL_STATE.lock().unwrap();
 
     let initialized = global_state.initialized;
     let pk = &global_state.public_key;
     let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+    let blocknum = global_state.blocknum;
 
     Ok(json!({
         "initialized": initialized,
-        "public_key": s_pk
+        "public_key": s_pk,
+        "blocknum": blocknum
     }))
 }
 
