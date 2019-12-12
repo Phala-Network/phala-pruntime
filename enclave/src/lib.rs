@@ -542,6 +542,7 @@ const ACTION_INIT_RUNTIME: u8 = 1;
 const ACTION_GET_INFO: u8 = 2;
 const ACTION_DUMP_STATES: u8 = 3;
 const ACTION_LOAD_STATES: u8 = 4;
+const ACTION_SYNC_BLOCK: u8 = 5;
 const ACTION_SET: u8 = 21;
 const ACTION_GET: u8 = 22;
 
@@ -573,6 +574,7 @@ pub extern "C" fn ecall_handle(
         ACTION_GET_INFO => get_info(payload),
         ACTION_DUMP_STATES => dump_states(payload),
         ACTION_LOAD_STATES => load_states(payload),
+        ACTION_SYNC_BLOCK => sync_block(payload),
         ACTION_GET => get(payload),
         ACTION_SET => set(payload),
         _ => unknown()
@@ -917,7 +919,9 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     // move forward
     (*global_state).blocknum = block.block.header.number + 1;
 
-    Ok(json!({}))
+    Ok(json!({
+        "synced_to": block.block.header.number
+    }))
 }
 
 fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
