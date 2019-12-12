@@ -6,8 +6,9 @@ function req {
   if [ -z "${data}" ]; then
     data='{}'
   fi
-  curl -X POST -H "Content-Type: application/json" "http://127.0.0.1:8000/${1}" \
-       -d "{\"input\":${data}, \"nonce\": {\"id\": ${rand_number}}}"
+  curl -sgX POST -H "Content-Type: application/json" "http://127.0.0.1:8000/${1}" \
+       -d "{\"input\":${data}, \"nonce\": {\"id\": ${rand_number}}}" \
+       | json_pp
   echo
 }
 
