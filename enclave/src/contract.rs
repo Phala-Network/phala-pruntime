@@ -1,6 +1,7 @@
 use std::prelude::v1::*;
 use std::vec::Vec;
-use serde::{Serialize, Deserialize};
+use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
+use core::str::FromStr;
 
 extern crate runtime as chain;
 
@@ -31,7 +32,10 @@ pub struct ItemDetails {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PricePolicy {
-  PerRow { price: chain::Balance },
+  PerRow {
+    #[serde(serialize_with = "se_to_str", deserialize_with = "de_from_str")]
+    price: chain::Balance
+  },
 }
 
 // order
@@ -52,8 +56,21 @@ pub struct OrderState {
   result_ready: bool
 }
 
-// contract
+// deesr
 
+fn se_to_str<S>(value: &chain::Balance, serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+  let s = value.to_string();
+  String::serialize(&s, serializer)
+}
+
+fn de_from_str<'de, D>(deserializer: D) -> Result<chain::Balance, D::Error>
+where D: Deserializer<'de> {
+    let s = String::deserialize(deserializer)?;
+    chain::Balance::from_str(&s).map_err(de::Error::custom)
+}
+
+// contract
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
