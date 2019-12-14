@@ -37,7 +37,7 @@ ring        = { path = "../vendor/ring", tag = "v0.16.5" }
 rust-crypto = { path = "../vendor/rust-crypto" }
 rustls      = { path = "../vendor/rustls" }
 webpki-roots= { path = "../vendor/webpki-roots" }
-serde       = { path = "../vendor/serde/serde" }
+serde       = { path = "../vendor/serde/serde", features = ["derive"] }
 serde_json  = { path = "../vendor/serde-json" }
 lazy_static = { version = "*", default-features = false, features = ["spin_no_std"] }
 libsecp256k1= { path = "../vendor/libsecp256k1" }

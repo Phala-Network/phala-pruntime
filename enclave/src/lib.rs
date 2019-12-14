@@ -11,7 +11,7 @@
 #[macro_use]
 extern crate sgx_tstd as std;
 extern crate sgx_types;
-extern crate sgx_trts;
+// extern crate sgx_trts;
 extern crate sgx_tcrypto;
 extern crate sgx_tse;
 extern crate sgx_rand;
@@ -28,11 +28,13 @@ extern crate num_bigint;
 extern crate chrono;
 extern crate secp256k1;
 #[macro_use]
+extern crate serde;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate lazy_static;
 extern crate ring;
-extern crate rand;
+// extern crate rand;
 
 use std::backtrace::{self, PrintFormat};
 use sgx_types::*;
@@ -96,6 +98,11 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct RuntimeState {
+    contract: contract::Contract
+}
+
 struct GlobalState {
     initialized: bool,
     public_key: Box<PublicKey>,
@@ -104,9 +111,10 @@ struct GlobalState {
 }
 
 lazy_static! {
-    static ref SESSIONS: SgxMutex<Map<String, Value>> = {
-        let mut m = Map::new();
-        SgxMutex::new(m)
+    static ref STATE: SgxMutex<RuntimeState> = {
+        SgxMutex::new(RuntimeState {
+            contract: contract::Contract::new()
+        })
     };
 
     static ref GLOBAL_STATE: SgxMutex<GlobalState> = {
@@ -674,7 +682,7 @@ const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
 const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
 
 fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
+    let mut sessions = STATE.lock().unwrap();
     let serialized = serde_json::to_string(&*sessions).unwrap();
 
     // Your private data
@@ -727,11 +735,11 @@ fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
     ).unwrap();
     println!("{}", String::from_utf8(decrypted_data.to_vec()).unwrap());
 
-    let deserialized: Map<String, Value> = serde_json::from_slice(decrypted_data).unwrap();
+    let deserialized: RuntimeState = serde_json::from_slice(decrypted_data).unwrap();
 
     println!("{}", serde_json::to_string_pretty(&deserialized).unwrap());
 
-    let mut sessions = SESSIONS.lock().unwrap();
+    let mut sessions = STATE.lock().unwrap();
     std::mem::replace(&mut *sessions, deserialized);
 
     Ok(json!({}))
@@ -805,6 +813,10 @@ SignedBlock {
 }
 */
 
+mod contract;
+mod types;
+use types::TxRef;
+
 extern crate codec;
 extern crate runtime as chain;
 use crate::codec::Decode;
@@ -852,39 +864,72 @@ fn parse_block(data: &Vec<u8>) -> Result<chain::SignedBlock, crate::codec::Error
     chain::SignedBlock::decode(&mut data.as_slice())
 }
 
+fn format_address(addr: &chain::Address) -> String {
+    match addr {
+        chain::Address::Id(id) => hex::encode_hex_compact(id.as_ref()),
+        chain::Address::Index(index) => format!("index:{}", index)
+    }
+}
+
 fn test_parse_block() {
-    // let raw_block: Vec<u8> = hex::decode_hex("00");
-    let raw_block: Vec<u8> = hex::decode_hex("bf192ec197592fda420383b1db2676e5b409a58cad489cc5c35dd94390c65a584c10987af003bd853a29992021a2f1a617b798ad3a151a3e2cbd6e4029370b7c68ec05dc5c1a11c17373b8d18d498fc1da0e94c35bdb3adc8116efda35b6025f3a080661757261206962a60f00000000056175726101013e3e4b72e1a133d129799aeaf43884493b6c30530f04be95f61089d73f21de2709108c407b8cb891ac8dbd1a498f1b6792f54e6f3b4f499d2e7010c81a902d8404280401000bf07ca2cb6e0101d90456000000000000007b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a13000000087b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a130000008dff9b2ca754cb5e80036647aab3fd25ccc4e4236c9fecd61968f121141149a7c402ebd3cdd43779a7e8d9afffee1989197d343ed9e936721168305a6da09d0188dc3417d5058ec4b4503e0c12ea1a0a89be200fe98922423d4334014fa6b0ee7b968b3f7eca2df8cf39ee8c9538f02e1361f44d0b809450f8501676db28131a1300000090a870eb3be217aa99476919b2864539830a622e82a9355d0f91f28a777372ecb0c3a1164f68246cfa5577682ab7505aff139681953fe0cc7457300a53807303d17c2d7823ebf260fd138f2d7e27d114c0145d968b5ff5006125f2414fadae6900");
+    let raw_block: Vec<u8> = base64::decode("iAKMDRPbdbAZ0eev9OZ1QgaAkoEnazAp6JzH2GeRFYdsR+pFUBbOaAW0+k5K+jPtsEr/P/JKJQDSobnB98Qhf8ug8HkDygkapC5T++CNvzYORIFimatwYSu/U53t66xzpQgGYXVyYSCGvagPAAAAAAVhdXJhAQEuXZ5zy2+qk+60y+/m1r0oZv/+LEiDCxMotfkvjP9aebuUVxBTmd2LCpu645AAjpRUNhqOmVuiKreUoV1aMpWLCCgEAQALoPTZAm8BQQKE/9Q1k8cV/dMcYRQavQSpn9aCLIVYhUzN45pWhOelbaJ9AU5gayhZiGwAEAthrYW6Ucm+acGAR3whdfUk17jp4NMearo4+NxR2w0VsVkEF0gQ/U6AHggnM+BZmvrhhMdSygqlAQAABAD/jq8EFRaHc2Mmyf6hfiX8UodhNpPJEpCcsiaqR5TyakgHABCl1OgA")
+                                    .unwrap();
     println!("SignedBlock data[{}]", raw_block.len());
     let block = match parse_block(&raw_block) {
         Ok(b) => b,
         Err(err) => {
-            println!("***** Failed to parse block ({:?})", err);
+            println!("test_parse_block: Failed to parse block ({:?})", err);
             return;
         }
     };
     print_block(&block);
+
+    // test parse address
+    let ref_sig = block.block.extrinsics[1].signature.as_ref().unwrap();
+    let ref_addr = &ref_sig.0;
+    println!("test_parse_block: addr = {}", format_address(ref_addr));
+
+    let cmd_json = serde_json::to_string_pretty(
+        &contract::Command::List(contract::ItemDetails {
+            name: "nname".to_owned(),
+            category: "ccategory".to_owned(),
+            description: "ddesc".to_owned(),
+            price: contract::PricePolicy::PerRow { price: 100_u128 },
+            dataset_link: "llink".to_owned(),
+            dataset_preview: "pprev".to_owned()
+        })).expect("jah");
+    println!("sample command: {}", cmd_json);
 }
 
 const CONTRACT_ONE: u32 = 1;
 
-fn handle_execution(origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
+fn handle_execution(state : &mut RuntimeState, pos: &TxRef,
+                    origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
                     contract_id: u32, payload: &Vec<u8>) {
     if contract_id != CONTRACT_ONE {
-        println!("Skipped unknown contract: {}", contract_id);
+        println!("handle_executiioin: Skipped unknown contract: {}", contract_id);
         return
     }
-    let object: serde_json::value::Value = serde_json::from_slice(payload.as_slice()).unwrap();
+    let cmd: contract::Command = serde_json::from_slice(payload.as_slice()).unwrap();
     // TODO: handle error ^^
-    
-    // TODO: handle the blockchain originated contract here
+
+    let addr = &origin.unwrap().0;
+    let origin = format_address(&addr);
+
+    println!("handle_execution: about to call handle_command");
+    state.contract.handle_command(&origin, pos, cmd)
 }
 
 fn dispatch(block: &chain::SignedBlock) {
-    for xt in &block.block.extrinsics {
+    let ref mut state = STATE.lock().unwrap();
+    for (i, xt) in block.block.extrinsics.iter().enumerate() {
         if let chain::Call::Execution(chain::ExecutionCall::push_command(contract_id, payload)) = &xt.function {
             println!("push_command(contract_id: {}, payload: data[{}])", contract_id, payload.len());
-            handle_execution(xt.signature.clone(), *contract_id, payload);
+            let pos = TxRef {
+                blocknum: block.block.header.number,
+                index: i as u32
+            };
+            handle_execution(state, &pos, xt.signature.clone(), *contract_id, payload);
         }
         // skip other unknown extrinsics
     }
@@ -940,29 +985,29 @@ fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
+    let mut sessions = STATE.lock().unwrap();
     let key = input.get("key").unwrap().as_str().unwrap();
 
-    let value = match sessions.get(&key.to_string()) {
-        Some(r) => {
-            r.as_str().unwrap()
-        },
-        None => {
-            ""
-        }
-    };
+    // let value = match sessions.get(&key.to_string()) {
+    //     Some(r) => {
+    //         r.as_str().unwrap()
+    //     },
+    //     None => {
+    //         ""
+    //     }
+    // };
 
     Ok(json!({
         "key": key.to_string(),
-        "value": value.to_string()
+        "value": "" //value.to_string()
     }))
 }
 
 fn set(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = SESSIONS.lock().unwrap();
+    let mut sessions = STATE.lock().unwrap();
     let key = input.get("key").unwrap().as_str().unwrap();
     let value = input.get("value").unwrap().as_str().unwrap();
-    sessions.insert(key.to_string(), json!(value.to_string()));
+    // sessions.insert(key.to_string(), json!(value.to_string()));
 
     Ok(json!({
         "key": key.to_string(),
