@@ -551,6 +551,7 @@ const ACTION_GET_INFO: u8 = 2;
 const ACTION_DUMP_STATES: u8 = 3;
 const ACTION_LOAD_STATES: u8 = 4;
 const ACTION_SYNC_BLOCK: u8 = 5;
+const ACTION_QUERY: u8 = 6;
 const ACTION_SET: u8 = 21;
 const ACTION_GET: u8 = 22;
 
@@ -583,6 +584,7 @@ pub extern "C" fn ecall_handle(
         ACTION_DUMP_STATES => dump_states(payload),
         ACTION_LOAD_STATES => load_states(payload),
         ACTION_SYNC_BLOCK => sync_block(payload),
+        ACTION_QUERY => query(payload),
         ACTION_GET => get(payload),
         ACTION_SET => set(payload),
         _ => unknown()
@@ -657,10 +659,8 @@ pub extern "C" fn ecall_handle(
 
 // --------------------------------
 
-fn error_result(msg: &str) -> Result<Value, Value> {
-    Err(json!({
-        "message": msg
-    }))
+fn error_msg(msg: &str) -> Value {
+    json!({ "message": msg })
 }
 
 fn unknown() -> Result<Value, Value> {
@@ -945,15 +945,12 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     let block_data = base64::decode(block_b64).unwrap();
     // TODO: handle error ^^
 
-    let block = match parse_block(&block_data) {
-        Ok(b) => b,
-        Err(err) => return error_result("Invalid block (err)")
-    };
+    let block = parse_block(&block_data).map_err(|_| error_msg("Invalid block (err)"))?;
 
     // it's the block needed
     let mut global_state = GLOBAL_STATE.lock().unwrap();
     if block.block.header.number != global_state.blocknum {
-        return error_result("Unexpected block")
+        return Err(error_msg("Unexpected block"))
     }
 
     // TODO: validate the block (light client validation logic here)
@@ -982,6 +979,19 @@ fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
         "public_key": s_pk,
         "blocknum": blocknum
     }))
+}
+
+fn query(input: &Map<String, Value>) -> Result<Value, Value> {
+    let mut state = STATE.lock().unwrap();
+
+    let err = error_msg("Malformed request");
+
+    let req_value = input.get("request").ok_or(err.clone())?.clone();
+    let req: contract::Request = serde_json::from_value(req_value).map_err(|_| err)?;
+    let res = state.contract.query(req);
+    let res_value = serde_json::to_value(res).unwrap();
+
+    Ok(res_value)
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
