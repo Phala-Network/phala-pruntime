@@ -12,7 +12,7 @@ function req {
   fi
   curl -sgX POST -H "Content-Type: application/json" "http://127.0.0.1:8000/${1}" \
        -d "{\"input\":${data}, \"nonce\": {\"id\": ${rand_number}}}" \
-       | jq '.payload|fromjson'
+       | tee /tmp/req_result.json | jq '.payload|fromjson'
   echo
 }
 
@@ -34,6 +34,7 @@ function set_query {
 function get_result {
   path="/order/0"
   req get "{\"path\": \"${path}\"}"
+  cat /tmp/req_result.json | jq '.payload|fromjson|.value' -r | base64 -d
 }
 
 case $1 in
