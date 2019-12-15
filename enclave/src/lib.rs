@@ -995,32 +995,34 @@ fn query(input: &Map<String, Value>) -> Result<Value, Value> {
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = STATE.lock().unwrap();
-    let key = input.get("key").unwrap().as_str().unwrap();
+    let mut state = STATE.lock().unwrap();
+    let path = input.get("path").unwrap().as_str().unwrap();
 
-    // let value = match sessions.get(&key.to_string()) {
-    //     Some(r) => {
-    //         r.as_str().unwrap()
-    //     },
-    //     None => {
-    //         ""
-    //     }
-    // };
+    let data = match state.contract.get(&path.to_string()) {
+        Some(d) => d,
+        None => {
+            return Err(error_msg("Data doesn't exist"))
+        }
+    };
+
+    let data_b64 = base64::encode(data);
 
     Ok(json!({
-        "key": key.to_string(),
-        "value": "" //value.to_string()
+        "path": path.to_string(),
+        "value": data_b64
     }))
 }
 
 fn set(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = STATE.lock().unwrap();
-    let key = input.get("key").unwrap().as_str().unwrap();
-    let value = input.get("value").unwrap().as_str().unwrap();
-    // sessions.insert(key.to_string(), json!(value.to_string()));
+    let mut state = STATE.lock().unwrap();
+    let path = input.get("path").unwrap().as_str().unwrap();
+    let data_b64 = input.get("data").unwrap().as_str().unwrap();
+
+    let data = base64::decode(data_b64).map_err(|_| error_msg("Failed to decode base64 data"))?;
+    state.contract.set(path.to_string(), data);
 
     Ok(json!({
-        "key": key.to_string(),
-        "value": value.to_string()
+        "path": path.to_string(),
+        "data": data_b64.to_string()
     }))
 }

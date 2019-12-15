@@ -1,5 +1,6 @@
 use std::prelude::v1::*;
 use std::vec::Vec;
+use std::collections::HashMap;
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
 
@@ -45,15 +46,24 @@ pub struct Order {
   id: OrderId,
   txref: TxRef,
   buyer: String,
+  details: OrderDetails,
+  state: OrderState,  // maybe shouldn't serialize this
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OrderDetails {
   item_id: ItemId,
-  state: OrderState,
+  query_link: String,
+  // query parameters...
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OrderState {
   data_ready: bool,
   query_ready: bool,
-  result_ready: bool
+  result_ready: bool,
+  matched_rows: u32,
+  result_path: String,
 }
 
 // deesr
@@ -75,7 +85,7 @@ where D: Deserializer<'de> {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
   List(ItemDetails),
-  OpenOrder(ItemId),
+  OpenOrder(OrderDetails),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -94,6 +104,8 @@ pub enum Response {
 pub struct Contract {
   items: Vec<Item>,
   orders: Vec<Order>,
+  #[serde(skip)]
+  dataset: HashMap<String, Vec<u8>>
 }
 
 impl Contract {
@@ -101,6 +113,7 @@ impl Contract {
     Contract {
       items: Vec::<Item>::new(),
       orders: Vec::<Order>::new(),
+      dataset: HashMap::<String, Vec<u8>>::new(),
     }
   }
 
@@ -114,27 +127,77 @@ impl Contract {
           details: details,
         })
       },
-      Command::OpenOrder(item_id) => {
+      Command::OpenOrder(details) => {
         self.orders.push(Order {
           id: self.orders.len() as OrderId,
           txref: txref.clone(),
           buyer: origin.clone(),
-          item_id: item_id,
+          details: details,
           state: OrderState {  // TODO
             data_ready: false,
             query_ready: false,
             result_ready: false,
+            matched_rows: 0,
+            result_path: String::new(),
           }
         });
       },
     }
   }
 
-  pub fn query(&self, req: Request) -> Response {
+  pub fn query(&mut self, req: Request) -> Response {
     match req {
       Request::GetItems => Response::GetItems { items: self.items.clone() },
-      Request::GetOrders => Response::GetOrders { orders: self.orders.clone() },
+      Request::GetOrders => {
+        self.update_order_state();
+        Response::GetOrders { orders: self.orders.clone() }
+      },
     }
+  }
+
+  pub fn set(&mut self, key: String, value: Vec<u8>) {
+    self.dataset.insert(key, value);
+  }
+
+  pub fn get(&self, key: &String) -> Option<&Vec<u8>> {
+    self.dataset.get(key)
+  }
+
+  fn update_order_state(&mut self) {
+    for order in &mut self.orders {
+      let item_id = order.details.item_id;
+      let item = &self.items[item_id as usize];
+      // check data available
+      let data_link = &item.details.dataset_link;
+      if self.dataset.contains_key(data_link) {
+        order.state.data_ready = true;
+      }
+      // check query available
+      let query_link = &order.details.query_link;
+      if self.dataset.contains_key(query_link) {
+        order.state.query_ready = true;
+      }
+      // compute if possible
+      if order.state.data_ready && order.state.query_ready {
+        let data = Self::compute(order);
+        let path = order.state.result_path.clone();
+        self.dataset.insert(path, data);
+      }
+    }
+  }
+
+  fn compute(order: &mut Order) -> Vec<u8> {
+    // config
+    let selected_query = vec!["name", "phone"];
+    let selected_data = vec!["name", "phone"];
+
+    // TODO: join the csv
+
+    order.state.result_ready = true;
+    order.state.matched_rows = 10;
+    order.state.result_path = format!("/order/{}", order.id);
+
+    vec![0, 1, 2, 3]
   }
 
 }
