@@ -1,8 +1,11 @@
 use std::prelude::v1::*;
 use std::vec::Vec;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
+
+extern crate csv_core;
+use self::csv_core::{Reader, ReadRecordResult};
 
 extern crate runtime as chain;
 
@@ -179,25 +182,119 @@ impl Contract {
       }
       // compute if possible
       if order.state.data_ready && order.state.query_ready {
-        let data = Self::compute(order);
+        let dataset = &self.dataset[data_link];
+        let query = &self.dataset[query_link];
+        let data = Self::compute(order, dataset, query);
+        
         let path = order.state.result_path.clone();
         self.dataset.insert(path, data);
       }
     }
   }
 
-  fn compute(order: &mut Order) -> Vec<u8> {
-    // config
-    let selected_query = vec!["name", "phone"];
-    let selected_data = vec!["name", "phone"];
+  fn compute(order: &mut Order, dataset: &Vec<u8>, query: &Vec<u8>) -> Vec<u8> {
+    // process query
+    let mut targets = HashSet::<Vec<u8>>::new();
+    let mut out = Vec::<u8>::new();
+    let mut matched_rows = 0;
+    {
+      let mut first_line = true;
+      let mut rdr = Reader::new();
+      let mut bytes = query.as_slice();
+      loop {
+        let mut outbuf = [0; 2048];
+        let mut ends = [0; 128];
+        let (result, nin, nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
+        bytes = &bytes[nin..];
+        match result {
+          ReadRecordResult::InputEmpty => {},
+          ReadRecordResult::OutputFull => panic!("record too large"),
+          ReadRecordResult::OutputEndsFull => panic!("too many fields"),
+          ReadRecordResult::Record => {
+            if first_line {
+              // do nothing, we assume the query has only one column
+              first_line = false;
+            } else {
+              // insert the query target to the hashset
+              if nfield == 1 {
+                // we only supports a single field right now
+                let value = Self::read_field(0, &outbuf, &ends).to_vec();
+                println!("inserting query target: {}", String::from_utf8(value.clone()).unwrap());
+                targets.insert(value);
+              }
+            }
+          },
+          ReadRecordResult::End => break,
+        }
+      } // end loop
+    }
 
-    // TODO: join the csv
+    // process dataset
+    {
+      let mut first_line = true;
+      let mut header_matched = false;
+      let mut idx_phone = 0;
+
+      let mut rdr = Reader::new();
+      let mut bytes = dataset.as_slice();
+      loop {
+        let mut outbuf = [0; 2048];
+        let mut ends = [0; 128];
+        let (result, nin, nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
+        match result {
+          ReadRecordResult::InputEmpty => {},
+          ReadRecordResult::OutputFull => panic!("record too large"),
+          ReadRecordResult::OutputEndsFull => panic!("too many fields"),
+          ReadRecordResult::Record => {
+            if first_line {
+              // find the interested fields
+              for i in 0..nfield {
+                // let start = if i == 0 { 0 } else { ends[i - 1] };
+                // let field = &outbuf[start..ends[i]];
+                let field = Self::read_field(i, &outbuf, &ends);
+                if field == b"phone" {
+                  idx_phone = i;
+                  header_matched = true;
+                }
+              }
+              first_line = false;
+              if !header_matched {
+                panic!("query header doesn't match")
+              }
+            } else {
+              // try to match and output the entire line...
+              if idx_phone < nfield {
+                let value = Self::read_field(idx_phone, &outbuf, &ends).to_vec();
+                print!("queryinig: {} - ", String::from_utf8(value.clone()).unwrap());
+                if targets.contains(&value) {
+                  println!("found");
+                  // should output the entire line!
+                  let mut full_line = (&bytes[..nin]).to_vec();
+                  out.append(&mut full_line);
+                  matched_rows += 1;
+                } else {
+                  println!("not found");
+                }
+              }
+            }
+          },
+          ReadRecordResult::End => break,
+        }
+        bytes = &bytes[nin..];
+      } // loop
+    }
 
     order.state.result_ready = true;
-    order.state.matched_rows = 10;
+    order.state.matched_rows = matched_rows;
     order.state.result_path = format!("/order/{}", order.id);
 
-    vec![0, 1, 2, 3]
+    out
+  }
+
+  fn read_field<'a>(i: usize, outbuf: &'a [u8], ends: &[usize]) -> &'a [u8] {
+    let start = if i == 0 { 0 } else { ends[i - 1] };
+    let end = ends[i];
+    &outbuf[start..end]
   }
 
 }

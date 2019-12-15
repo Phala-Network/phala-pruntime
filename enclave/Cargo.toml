@@ -32,7 +32,7 @@ yasna       = { path = "../vendor/yasna", features = ["bit-vec", "num-bigint", "
 num-bigint  = { path = "../vendor/num-bigint" }
 bit-vec     = { version = "*", default-features = false}
 httparse    = { version = "1.3.2", default-features = false }
-itertools   = { version = "0.8" , default-features = false, features = []}
+itertools   = { version = "0.8", default-features = false, features = []}
 ring        = { path = "../vendor/ring", tag = "v0.16.5" }
 rust-crypto = { path = "../vendor/rust-crypto" }
 rustls      = { path = "../vendor/rustls" }
@@ -49,6 +49,11 @@ sp-io                = { path = "../../experimental-node/substrate/primitives/sr
 sp-runtime-interface = { path = "../../experimental-node/substrate/primitives/runtime-interface", default-features = false}
 sp-runtime           = { path = "../../experimental-node/substrate/primitives/sr-primitives", default-features = false}
 codec                = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+
+csv-core = { version = "0.1.5" }
+
+[patch.crates-io]
+memchr = { path = "../rust-memchr" }
 
 # [patch.'https://github.com/baidu/rust-sgx-sdk.git']
 # sgx_alloc = { path = "../rust-sgx-sdk/sgx_alloc" }
