@@ -32,6 +32,7 @@ unused_results,
 variant_size_differences,
 warnings
 )]
+#![allow(array_into_iter)]
 
 // In the `pregenerate_asm_main()` case we don't want to access (Cargo)
 // environment variables at all, so avoid `use std::env` here.
