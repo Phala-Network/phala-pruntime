@@ -1,0 +1,29 @@
+[package]
+name = "byte-slice-cast"
+version = "0.3.4"
+authors = ["Sebastian Dröge <sebastian@centricular.com>"]
+description = "Safely cast bytes slices from/to slices of built-in fundamental numeric types"
+keywords = ["no_std"]
+repository = "https://github.com/sdroege/bytes-num-slice-cast"
+license = "MIT"
+readme = "README.md"
+include = [
+    "src/lib.rs",
+    "Cargo.toml",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+]
+edition = "2018"
+
+[dependencies]
+sgx_tstd = { path = "../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[features]
+default = ["std", "mesalock_sgx"]
+std = ["mesalock_sgx", "alloc"]
+mesalock_sgx = ["sgx_tstd", "std"]
+alloc = []
+
+[badges]
+travis-ci = { repository = "sdroege/byte-slice-cast", branch = "master" }

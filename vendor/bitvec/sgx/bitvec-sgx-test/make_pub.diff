@@ -1,0 +1,62 @@
+diff --git a/src/pointer.rs b/src/pointer.rs
+index 2578cce..2cde8cd 100644
+--- a/src/pointer.rs
++++ b/src/pointer.rs
+@@ -54,7 +54,7 @@ const PTR_BITS: usize = size_of::<*const u8>() * 8;
+ ///
+ /// Don’t.
+ #[doc(hidden)]
+-pub(crate) union Pointer<T> {
++pub union Pointer<T> {
+ 	/// A read pointer to some data.
+ 	r: *const T,
+ 	/// A write pointer to some data.
+@@ -74,7 +74,7 @@ impl<T> Pointer<T> {
+ 	///
+ 	/// The stored address, as a read pointer.
+ 	#[inline]
+-	pub(crate) fn r(&self) -> *const T {
++	pub fn r(&self) -> *const T {
+ 		unsafe { self.r }
+ 	}
+ 
+@@ -400,7 +400,7 @@ where T: BitStore {
+ 	/// in the caller’s memory space. The caller is responsible for ensuring
+ 	/// that the slice of memory the produced `BitPtr<T>` describes is all
+ 	/// governable in the caller’s context.
+-	pub(crate) fn new(
++	pub fn new(
+ 		data: impl Into<Pointer<T>>,
+ 		head: impl Into<BitIdx>,
+ 		bits: usize,
+@@ -505,7 +505,7 @@ where T: BitStore {
+ 	/// This pointer must be valid in the user’s memory model and allocation
+ 	/// regime in order for the caller to dereference it.
+ 	#[inline]
+-	pub(crate) fn pointer(&self) -> Pointer<T> {
++	pub fn pointer(&self) -> Pointer<T> {
+ 		(self.ptr.as_ptr() as usize & Self::PTR_DATA_MASK).into()
+ 	}
+ 
+diff --git a/src/store.rs b/src/store.rs
+index a4f4f52..8d0b300 100644
+--- a/src/store.rs
++++ b/src/store.rs
+@@ -531,7 +531,7 @@ but is not required to be the electrical `LSb`, `MSb`, or any other.
+ **/
+ #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+ #[doc(hidden)]
+-pub struct BitIdx(pub(crate) u8);
++pub struct BitIdx(pub u8);
+ 
+ impl BitIdx {
+ 	/// Checks if the index is valid for a type.
+@@ -1066,7 +1066,7 @@ an element rather than a semantic bit.
+ **/
+ #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+ #[doc(hidden)]
+-pub struct BitPos(pub(crate) u8);
++pub struct BitPos(pub u8);
+ 
+ impl BitPos {
+ 	/// Checks if the position is valid for a type.

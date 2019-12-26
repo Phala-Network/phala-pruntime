@@ -6,11 +6,11 @@ path = "../rust-sgx-sdk/sgx_types"
 stage = 1
 
 [dependencies.sgx_demangle]
-path = "../../../sgx_demangle"
+path = "../rust-sgx-sdk/sgx_demangle"
 stage = 1
 
 [dependencies.panic_abort]
-path = "../../../sgx_panic_abort"
+path = "../rust-sgx-sdk/sgx_panic_abort"
 stage = 1
 
 [dependencies.sgx_libc]
@@ -38,7 +38,7 @@ path = "../rust-sgx-sdk/sgx_trts"
 stage = 3
 
 [dependencies.sgx_backtrace_sys]
-path = "../../../sgx_backtrace_sys"
+path = "../rust-sgx-sdk/sgx_backtrace_sys"
 stage = 3
 
 [dependencies.sgx_unwind]
@@ -62,7 +62,7 @@ path = "../rust-sgx-sdk/sgx_alloc"
 stage = 4
 
 [dependencies.panic_unwind]
-path = "../../../sgx_panic_unwind"
+path = "../rust-sgx-sdk/sgx_panic_unwind"
 stage = 5
 
 [dependencies.std]
@@ -83,9 +83,9 @@ path = "../rust-sgx-sdk/sgx_tunittest"
 stage = 7
 
 [dependencies.sgx_backtrace]
-path = "../sgx_backtrace"
+path = "../rust-sgx-sdk/sgx_backtrace"
 stage = 8
 
 [dependencies.sgx_cov]
-path = "../sgx_cov"
+path = "../rust-sgx-sdk/sgx_cov"
 stage = 8

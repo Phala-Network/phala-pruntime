@@ -1,0 +1,93 @@
+################################################################################
+#                               Project Manifest                               #
+#                                                                              #
+# This file describes the `bitvec` Rust project to the Rust build tool, Cargo. #
+################################################################################
+
+[package]
+name = "bitvec"
+version = "0.15.2"
+authors = [
+	"myrrlyn <self@myrrlyn.dev>",
+]
+categories = [
+	"data-structures",
+	"embedded",
+	"no-std",
+	"rust-patterns",
+]
+description = "A crate for manipulating memory, bit by bit"
+documentation = "https://docs.rs/bitvec"
+edition = "2018"
+homepage = "https://myrrlyn.net/crates/bitvec"
+keywords = [
+	"bits",
+	"bitvec",
+]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/myrrlyn/bitvec"
+exclude = [ "/sgx/*", ]
+
+[features]
+alloc = []
+atomic = []
+default = [
+	"atomic",
+	"std",
+    "mesalock_sgx",
+]
+std = [
+	"alloc",
+    "mesalock_sgx",
+]
+mesalock_sgx = [
+    "std",
+    "sgx_tstd",
+]
+testing = [
+	"atomic",
+	"serde",
+	"std",
+]
+
+
+[dependencies]
+sgx_tstd = { path = "../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[dependencies.serde]
+#default-features = false
+path = "../serde/serde"
+features = [
+	"derive",
+]
+optional = true
+version = "1"
+
+# Crates required when running the test suite.
+[dev-dependencies]
+#serde = "1"
+#serde_json = "1"
+#serde_test = "1"
+
+# Indicates the features that docs.rs should enable when building documentation.
+[package.metadata.docs.rs]
+features = [
+	"atomic",
+	"serde",
+	"std",
+]
+
+[badges.codecov]
+repository = "myrrlyn/bitvec"
+branch = "master"
+service = "github"
+
+[badges.is-it-maintained-issue-resolution]
+repository = "myrrlyn/bitvec"
+
+[badges.is-it-maintained-open-issues]
+repository = "myrrlyn/bitvec"
+
+[badges.maintenance]
+status = "actively-developed"

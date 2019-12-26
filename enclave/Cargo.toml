@@ -33,7 +33,7 @@ num-bigint  = { path = "../vendor/num-bigint" }
 bit-vec     = { version = "*", default-features = false}
 httparse    = { version = "1.3.2", default-features = false }
 itertools   = { version = "0.8", default-features = false, features = []}
-ring        = { path = "../vendor/ring", tag = "v0.16.5" }
+ring        = { path = "../vendor/ring" }
 rust-crypto = { path = "../vendor/rust-crypto" }
 rustls      = { path = "../vendor/rustls" }
 webpki-roots= { path = "../vendor/webpki-roots" }
@@ -45,15 +45,15 @@ rand        = { path = "../vendor/rand"}
 rand_os     = { path = "../vendor/rand/rand_os"}
 
 runtime              = { path = "../../experimental-node/node/runtime", default-features = false, package = "experimental-node-runtime" }
-sp-io                = { path = "../../experimental-node/substrate/primitives/sr-io", default-features = false}
-sp-runtime-interface = { path = "../../experimental-node/substrate/primitives/runtime-interface", default-features = false}
-sp-runtime           = { path = "../../experimental-node/substrate/primitives/sr-primitives", default-features = false}
-codec                = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+sp-io                = { version = "2.0.0", path = "../../experimental-node/substrate/primitives/io", default-features = false}
+sp-runtime-interface = { version = "2.0.0", path = "../../experimental-node/substrate/primitives/runtime-interface", default-features = false}
+sp-runtime           = { version = "2.0.0", path = "../../experimental-node/substrate/primitives/runtime", default-features = false}
+codec                = { path = "../vendor/parity-scale-codec", package = "parity-scale-codec", default-features = false, features = ["derive"] }
 
 csv-core = { version = "0.1.5" }
 
 [patch.crates-io]
-memchr = { path = "../rust-memchr" }
+memchr = { path = "../vendor/rust-memchr" }
 
 # [patch.'https://github.com/baidu/rust-sgx-sdk.git']
 # sgx_alloc = { path = "../rust-sgx-sdk/sgx_alloc" }

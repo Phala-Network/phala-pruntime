@@ -1,0 +1,22 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 711902d..e247798 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -22,7 +22,7 @@ instead of one. Similarly for `memchr3`.
+ 
+ #![cfg_attr(not(feature = "use_std"), no_std)]
+ 
+-#![deny(missing_docs)]
++//#![deny(missing_docs)]
+ #![doc(html_root_url = "https://docs.rs/memchr/2.0.0")]
+ 
+ #![cfg_attr(all(feature = "mesalock_sgx", not(target_env = "sgx")), no_std)]
+@@ -54,7 +54,7 @@ mod c;
+ #[allow(dead_code)]
+ mod fallback;
+ mod iter;
+-mod naive;
++pub mod naive;
+ #[cfg(any(all(target_arch = "x86_64", memchr_runtime_simd),
+           feature = "mesalock_sgx"))]
+ mod x86;

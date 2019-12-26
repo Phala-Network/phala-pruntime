@@ -1,0 +1,60 @@
+[package]
+name = "parity-scale-codec"
+description = "SCALE - Simple Concatenating Aggregated Little Endians"
+version = "1.1.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+license = "Apache-2.0"
+repository = "https://github.com/paritytech/parity-scale-codec"
+categories = ["encoding"]
+edition = "2018"
+exclude = [
+    ".gitignore",
+    ".travis.yml",
+    "deploy.sh",
+    "benches/**/*",
+    "tests/**/*",
+    "/sgx/*",
+]
+
+[dependencies]
+arrayvec = { version = "0.5.1", default-features = false, features = ["array-sizes-33-128", "array-sizes-129-255"] }
+serde = { path = "../serde/serde", optional = true } # serde = { version = "1.0", optional = true }
+parity-scale-codec-derive = { path = "derive", version = "^1.0.2", optional = true }
+bitvec = { path = "../bitvec", optional = true }
+byte-slice-cast = { path = "../byte-slice-cast", optional = true }
+generic-array = { version = "0.13.2", optional = true }
+sgx_tstd = { path = "../../rust-sgx-sdk/sgx_tstd", optional = true }
+
+[dev-dependencies]
+#serde_derive = { git = "https://github.com/mesalock-linux/serde-sgx.git" }
+#parity-scale-codec-derive = { path = "derive", version = "^1.0.2", default-features = false }
+#criterion = "0.2"
+#bitvec = { git = "https://github.com/mesalock-linux/bitvec-sgx.git", tag = "sgx_1.0.9" }
+#typenum = "1.10"
+
+[[bench]]
+name = "benches"
+harness = false
+
+[lib]
+bench = false
+
+[features]
+default = ["std", "mesalock_sgx"]
+derive = ["parity-scale-codec-derive"]
+std = ["mesalock_sgx", "serde", "bitvec/std", "byte-slice-cast/std"]
+bit-vec = ["bitvec", "byte-slice-cast"]
+mesalock_sgx = ["sgx_tstd"]
+
+# WARNING: DO _NOT_ USE THIS FEATURE IF YOU ARE WORKING ON CONSENSUS CODE!*
+#
+# Provides implementations for more data structures than just Vec and Box.
+# Concretely it will provide parity-scale-codec implementations for many types
+# that can be found in std and/or alloc.
+full = []
+
+#[workspace]
+#members = [
+#	"derive",
+#	"fuzzer",
+#]
