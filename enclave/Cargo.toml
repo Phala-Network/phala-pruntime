@@ -53,7 +53,7 @@ codec                = { path = "../vendor/parity-scale-codec", package = "parit
 csv-core = { version = "0.1.5" }
 
 [patch.crates-io]
-memchr = { path = "../vendor/rust-memchr" }
+memchr = { version = "2", path = "../vendor/rust-memchr" }
 
 # [patch.'https://github.com/baidu/rust-sgx-sdk.git']
 # sgx_alloc = { path = "../rust-sgx-sdk/sgx_alloc" }

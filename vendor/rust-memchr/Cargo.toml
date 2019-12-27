@@ -23,6 +23,7 @@ bench = false
 default = ["use_std", "mesalock_sgx"]
 use_std = []
 mesalock_sgx = ["sgx_tstd", "sgx_libc", "sgx_types"]
+libc = ["sgx_libc"]
 
 [target.'cfg(not(target_env = "sgx"))'.dependencies]
 sgx_libc = { path = "../../rust-sgx-sdk/sgx_libc", optional = true }
