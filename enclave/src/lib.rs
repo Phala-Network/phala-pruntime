@@ -1,15 +1,17 @@
 #![crate_name = "enclaveapp"]
 #![crate_type = "staticlib"]
 
-#![cfg_attr(not(target_env = "sgx"), no_std)]
-#![cfg_attr(target_env = "sgx", feature(rustc_private))]
-
 #![warn(unused_imports)]
 #![warn(unused_extern_crates)]
 
-#[cfg(not(target_env = "sgx"))]
+#![cfg_attr(all(feature = "mesalock_sgx",
+not(target_env = "sgx")), no_std)]
+#![cfg_attr(all(target_env = "sgx", target_vendor = "mesalock"), feature(rustc_private))]
+
+#[cfg(all(feature = "mesalock_sgx", not(target_env = "sgx")))]
 #[macro_use]
 extern crate sgx_tstd as std;
+
 extern crate sgx_types;
 // extern crate sgx_trts;
 extern crate sgx_tcrypto;
@@ -751,42 +753,43 @@ fn init_runtime(input: &Map<String, Value>) -> Result<Value, Value> {
         return Err(json!({"message": "Already initialized"}))
     }
 
-    let mut prng = rand_os::OsRng::new().unwrap();
-
-    let sk = SecretKey::random(&mut prng);
-    let pk = PublicKey::from_secret_key(&sk);
-
-    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
-        Ok(r) => r,
-        Err(e) => {
-            println!("Error in create_attestation_report: {:?}", e);
-            return Err(json!({"message": "Error while connecting to IAS"}))
-        }
-    };
-
-    let mut global_state = GLOBAL_STATE.lock().unwrap();
-    (*global_state).initialized = true;
-    *global_state.public_key = pk.clone();
-    *global_state.private_key = sk.clone();
-
-    let mut map = serde_json::Map::new();
-    map.insert("report".to_owned(), json!(attn_report));
-    map.insert("signature".to_owned(), json!(sig));
-    map.insert("signing_cert".to_owned(), json!(cert));
-
-    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
-
-    Ok(
-        json!({
-            "public_key": s_pk,
-            "attestation": {
-                "version": 1,
-                "provider": "SGX",
-                "payload": map
-            }
-        })
-    )
+    Ok(json!({}))
+//    let mut prng = rand_os::OsRng::new().unwrap();
+//
+//    let sk = SecretKey::random(&mut prng);
+//    let pk = PublicKey::from_secret_key(&sk);
+//
+//    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
+//        Ok(r) => r,
+//        Err(e) => {
+//            println!("Error in create_attestation_report: {:?}", e);
+//            return Err(json!({"message": "Error while connecting to IAS"}))
+//        }
+//    };
+//
+//    let mut global_state = GLOBAL_STATE.lock().unwrap();
+//    (*global_state).initialized = true;
+//    *global_state.public_key = pk.clone();
+//    *global_state.private_key = sk.clone();
+//
+//    let mut map = serde_json::Map::new();
+//    map.insert("report".to_owned(), json!(attn_report));
+//    map.insert("signature".to_owned(), json!(sig));
+//    map.insert("signing_cert".to_owned(), json!(cert));
+//
+//    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+//    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
+//
+//    Ok(
+//        json!({
+//            "public_key": s_pk,
+//            "attestation": {
+//                "version": 1,
+//                "provider": "SGX",
+//                "payload": map
+//            }
+//        })
+//    )
 }
 
 /*
