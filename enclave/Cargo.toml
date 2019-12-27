@@ -50,7 +50,7 @@ sp-runtime-interface = { version = "2.0.0", path = "../../experimental-node/subs
 sp-runtime           = { version = "2.0.0", path = "../../experimental-node/substrate/primitives/runtime", default-features = false}
 codec                = { path = "../vendor/parity-scale-codec", package = "parity-scale-codec", default-features = false, features = ["derive"] }
 
-csv-core = { version = "0.1.5" }
+csv-core = { version = "0.1.5", default-features = false }
 
 [patch.crates-io]
 memchr = { version = "2", path = "../vendor/rust-memchr" }

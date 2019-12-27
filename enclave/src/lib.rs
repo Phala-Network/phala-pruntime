@@ -957,7 +957,7 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
 
     // trigger updates
     dispatch(&block);
-    
+
     // move forward
     (*global_state).blocknum = block.block.header.number + 1;
 
