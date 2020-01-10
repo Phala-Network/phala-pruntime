@@ -46,7 +46,7 @@ codec                = { package = "parity-scale-codec", version = "1.0.0", defa
 csv-core = { version = "0.1.5", default-features = false }
 
 [patch.crates-io]
-memchr = { git = "https://github.com/mesalock-linux/rust-memchr-sgx" } # { version = "2", path = "../vendor/rust-memchr" }
+# memchr = { git = "https://github.com/mesalock-linux/rust-memchr-sgx" } # { version = "2", path = "../vendor/rust-memchr" }
 # aho-corasick = { git = "https://github.com/mesalock-linux/aho-corasick-sgx" }
 # regex = { git = "https://github.com/mesalock-linux/regex-sgx" }
 # Inflector = { path = "../../Inflector" }
