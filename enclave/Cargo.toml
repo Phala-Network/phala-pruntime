@@ -2,6 +2,7 @@
 name = "EnclaveApp"
 version = "0.0.1"
 authors = ["jasl"]
+edition = "2018"
 
 [lib]
 name = "enclaveapp"
@@ -29,8 +30,8 @@ webpki-roots= { git = "https://github.com/mesalock-linux/webpki-roots", branch =
 serde       = { git = "https://github.com/mesalock-linux/serde-sgx", features = ["derive"] } #{ path = "../vendor/serde/serde", features = ["derive"] }
 serde_json  = { git = "https://github.com/mesalock-linux/serde-json-sgx" } # { path = "../vendor/serde-json" }
 libsecp256k1= { git = "https://github.com/mesalock-linux/libsecp256k1-rs-sgx" } # { path = "../vendor/libsecp256k1" }
-rand        = { git = "https://github.com/mesalock-linux/rand-sgx" } # { path = "../vendor/rand"}
-# rand_os     = { git = "https://github.com/mesalock-linux/rand-sgx" } # { path = "../vendor/rand/rand_os"}
+rand        = { git = "https://github.com/mesalock-linux/rand-sgx", tag = "v0.6.5_sgx1.1.0" } # <-- matches libsecp256k1    { path = "../vendor/rand"}
+# rand_core   = { git = "https://github.com/mesalock-linux/rand-sgx", features = ["getrandom"] } # { path = "../vendor/rand/rand_os"}
 
 bit-vec     = { version = "*", default-features = false}
 httparse    = { version = "1.3.2", default-features = false }
@@ -41,9 +42,23 @@ runtime              = { path = "../../experimental-node/node/runtime", default-
 sp-io                = { path = "../../experimental-node/substrate/primitives/io", default-features = false }
 sp-runtime-interface = { path = "../../experimental-node/substrate/primitives/runtime-interface", default-features = false }
 sp-runtime           = { path = "../../experimental-node/substrate/primitives/runtime", default-features = false }
-codec                = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] } # { path = "../vendor/parity-scale-codec", package = "parity-scale-codec", default-features = false, features = ["derive"] }
+parity-scale-codec                = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] } # { path = "../vendor/parity-scale-codec", package = "parity-scale-codec", default-features = false, features = ["derive"] }
 
 csv-core = { version = "0.1.5", default-features = false }
+
+# for light_validation
+derive_more = "0.99.0"
+log = { git = "https://github.com/mesalock-linux/log-sgx" }
+hash-db = { version = "0.15.2", default-features = false }
+num = { package = "num-traits", version = "0.2", default-features = false }
+finality-grandpa = { version = "0.10.1", default-features = false, features = ["derive-codec"] }
+trie = { package = "sp-trie", path = "../../experimental-node/substrate/primitives/trie", default-features = false }
+system = { package = "frame-system", path = "../../experimental-node/substrate/frame/system", default-features = false }
+sp-finality-grandpa = { package = "sp-finality-grandpa", path = "../../experimental-node/substrate/primitives/finality-grandpa", default-features = false, features = ["full_crypto"] }
+# sp-blockchain = { package = "sp-blockchain", path = "../../experimental-node/substrate/primitives/blockchain" }
+sp-application-crypto = { package = "sp-application-crypto", path = "../../experimental-node/substrate/primitives/application-crypto", default-features = false, features = ["full_crypto"] }
+sp-core = { package = "sp-core", path = "../../experimental-node/substrate/primitives/core", default-features = false, features = ["full_crypto"]}
+# sc-finality-grandpa = { package = "sc-finality-grandpa", path = "../../experimental-node/substrate/client/finality-grandpa/"  }
 
 [patch.crates-io]
 memchr = { path = "../memchr-nostd", default-features = false } # { version = "2", path = "../vendor/rust-memchr" }

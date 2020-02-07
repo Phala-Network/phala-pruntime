@@ -1,6 +1,6 @@
-use std::prelude::v1::*;
-use std::vec::Vec;
-use std::collections::{HashSet, HashMap};
+use crate::std::prelude::v1::*;
+use crate::std::vec::Vec;
+use crate::std::collections::{HashSet, HashMap};
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
 

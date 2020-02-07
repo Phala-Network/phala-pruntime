@@ -37,25 +37,27 @@ extern crate lazy_static;
 extern crate ring;
 // extern crate rand;
 
-use std::backtrace::{self, PrintFormat};
+#[macro_use] extern crate log;
+
+use crate::std::backtrace::{self, PrintFormat};
 use sgx_types::*;
 use sgx_tse::*;
 //use sgx_trts::trts::{rsgx_raw_is_outside_enclave, rsgx_lfence};
 use sgx_tcrypto::*;
 use sgx_rand::*;
 
-use std::prelude::v1::*;
-use std::sync::Arc;
-use std::mem;
-use std::net::TcpStream;
-use std::string::String;
-use std::ptr;
-use std::str;
-use std::io::{Write, Read, BufReader};
-use std::untrusted::fs;
-use std::vec::Vec;
-use std::collections::HashMap;
-use std::sync::SgxMutex;
+use crate::std::prelude::v1::*;
+use crate::std::sync::Arc;
+use crate::std::mem;
+use crate::std::net::TcpStream;
+use crate::std::string::String;
+use crate::std::ptr;
+use crate::std::str;
+use crate::std::io::{Write, Read, BufReader};
+use crate::std::untrusted::fs;
+use crate::std::vec::Vec;
+use crate::std::collections::HashMap;
+use crate::std::sync::SgxMutex;
 use itertools::Itertools;
 use serde_json::{Map, Value};
 use secp256k1::*;
@@ -64,6 +66,7 @@ use ring::rand::SecureRandom;
 
 mod cert;
 mod hex;
+mod light_validation;
 
 extern "C" {
     pub fn ocall_sgx_init_quote(
@@ -675,12 +678,12 @@ fn test(input: &Map<String, Value>) -> Result<Value, Value> {
     Ok(json!({}))
 }
 
-const HARD_CODE_PASS: &[u8] = b"password";
-const HARD_CODE_IV: &[u8] = b"iv";
+// const HARD_CODE_PASS: &[u8] = b"password";
+// const HARD_CODE_IV: &[u8] = b"iv";
 const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
 
-const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
-const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
+// const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
+// const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
 
 fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
     let mut sessions = STATE.lock().unwrap();
@@ -751,44 +754,43 @@ fn init_runtime(input: &Map<String, Value>) -> Result<Value, Value> {
     if GLOBAL_STATE.lock().unwrap().initialized {
         return Err(json!({"message": "Already initialized"}))
     }
-
-    Ok(json!({}))
-//    let mut prng = rand_os::OsRng::new().unwrap();
-//
-//    let sk = SecretKey::random(&mut prng);
-//    let pk = PublicKey::from_secret_key(&sk);
-//
-//    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
-//        Ok(r) => r,
-//        Err(e) => {
-//            println!("Error in create_attestation_report: {:?}", e);
-//            return Err(json!({"message": "Error while connecting to IAS"}))
-//        }
-//    };
-//
-//    let mut global_state = GLOBAL_STATE.lock().unwrap();
-//    (*global_state).initialized = true;
-//    *global_state.public_key = pk.clone();
-//    *global_state.private_key = sk.clone();
-//
-//    let mut map = serde_json::Map::new();
-//    map.insert("report".to_owned(), json!(attn_report));
-//    map.insert("signature".to_owned(), json!(sig));
-//    map.insert("signing_cert".to_owned(), json!(cert));
-//
-//    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-//    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
-//
-//    Ok(
-//        json!({
-//            "public_key": s_pk,
-//            "attestation": {
-//                "version": 1,
-//                "provider": "SGX",
-//                "payload": map
-//            }
-//        })
-//    )
+    
+    let mut prng = rand::rngs::OsRng::default();
+    
+    let sk = SecretKey::random(&mut prng);
+    let pk = PublicKey::from_secret_key(&sk);
+    
+    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
+        Ok(r) => r,
+        Err(e) => {
+            println!("Error in create_attestation_report: {:?}", e);
+            return Err(json!({"message": "Error while connecting to IAS"}))
+        }
+    };
+    
+    let mut global_state = GLOBAL_STATE.lock().unwrap();
+    (*global_state).initialized = true;
+    *global_state.public_key = pk.clone();
+    *global_state.private_key = sk.clone();
+    
+    let mut map = serde_json::Map::new();
+    map.insert("report".to_owned(), json!(attn_report));
+    map.insert("signature".to_owned(), json!(sig));
+    map.insert("signing_cert".to_owned(), json!(cert));
+    
+    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
+    
+    Ok(
+        json!({
+            "public_key": s_pk,
+            "attestation": {
+                "version": 1,
+                "provider": "SGX",
+                "payload": map
+            }
+        })
+    )
 }
 
 /*
@@ -819,14 +821,14 @@ mod contract;
 mod types;
 use types::TxRef;
 
-extern crate codec;
+// extern crate parity_scale_codec as codec;
 extern crate runtime as chain;
-use crate::codec::Decode;
+use parity_scale_codec::Decode;
 
 extern crate sp_runtime;
 use crate::sp_runtime::generic::Header;
 
-use std::fmt;
+use crate::std::fmt;
 
 fn fmt_call(call: &chain::Call) -> String {
     match call {
@@ -862,7 +864,7 @@ fn print_block(signed_block: &chain::SignedBlock) {
     println!("}}");
 }
 
-fn parse_block(data: &Vec<u8>) -> Result<chain::SignedBlock, crate::codec::Error> {
+fn parse_block(data: &Vec<u8>) -> Result<chain::SignedBlock, parity_scale_codec::Error> {
     chain::SignedBlock::decode(&mut data.as_slice())
 }
 
