@@ -59,7 +59,9 @@ use crate::std::vec::Vec;
 use crate::std::collections::HashMap;
 use crate::std::sync::SgxMutex;
 use itertools::Itertools;
+use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use serde_json::{Map, Value};
+use parity_scale_codec::{Encode, Decode};
 use secp256k1::*;
 use secp256k1::{SecretKey, PublicKey};
 use ring::rand::SecureRandom;
@@ -102,9 +104,14 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+use system::Trait;
+type ChainLightValidation = light_validation::LightValidation::<chain::Runtime>;
+
+#[derive(Serialize, Deserialize, Debug)]  //
 struct RuntimeState {
-    contract: contract::Contract
+    contract: contract::Contract,
+    #[serde(serialize_with = "se_to_b64", deserialize_with = "de_from_b64")]
+    light_client: ChainLightValidation,
 }
 
 struct GlobalState {
@@ -114,10 +121,26 @@ struct GlobalState {
     blocknum: u32,
 }
 
+fn se_to_b64<S>(value: &ChainLightValidation, serializer: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+  let data = value.encode();
+  let s = base64::encode(data.as_slice());
+  String::serialize(&s, serializer)
+}
+
+fn de_from_b64<'de, D>(deserializer: D) -> Result<ChainLightValidation, D::Error>
+where D: Deserializer<'de> {
+    let s = String::deserialize(deserializer)?;
+    let data = base64::decode(&s).map_err(de::Error::custom)?;
+    ChainLightValidation::decode(&mut data.as_slice()).map_err(|e| de::Error::custom("bad data"))
+}
+use std::collections::BTreeMap;
+
 lazy_static! {
     static ref STATE: SgxMutex<RuntimeState> = {
         SgxMutex::new(RuntimeState {
-            contract: contract::Contract::new()
+            contract: contract::Contract::new(),
+            light_client: ChainLightValidation::new()
         })
     };
 
@@ -559,6 +582,12 @@ const ACTION_QUERY: u8 = 6;
 const ACTION_SET: u8 = 21;
 const ACTION_GET: u8 = 22;
 
+#[derive(Serialize, Deserialize, Debug)]
+struct InitRuntimeRequest {
+    skip_ra: bool,
+    bridge_genesis_info_b64: String
+}
+
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
     input_ptr: *const u8, input_len: usize
@@ -577,21 +606,28 @@ pub extern "C" fn ecall_handle(
     output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
 ) -> sgx_status_t {
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
-    let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
-    let input = input_value.as_object().unwrap();
-    let payload = input_value.get("input").unwrap().as_object().unwrap();
-
+    let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
+    let input_value = input.get("input").unwrap().clone();
+    // Strong typed 
     let result = match action {
-        ACTION_TEST => test(payload),
-        ACTION_INIT_RUNTIME => init_runtime(payload),
-        ACTION_GET_INFO => get_info(payload),
-        ACTION_DUMP_STATES => dump_states(payload),
-        ACTION_LOAD_STATES => load_states(payload),
-        ACTION_SYNC_BLOCK => sync_block(payload),
-        ACTION_QUERY => query(payload),
-        ACTION_GET => get(payload),
-        ACTION_SET => set(payload),
-        _ => unknown()
+        ACTION_INIT_RUNTIME => {
+            let param = serde_json::from_value(input_value).unwrap();
+            init_runtime(param)
+        },
+        _ => {
+            let payload = input_value.as_object().unwrap();
+            match action {
+                ACTION_TEST => test(payload),
+                ACTION_GET_INFO => get_info(payload),
+                ACTION_DUMP_STATES => dump_states(payload),
+                ACTION_LOAD_STATES => load_states(payload),
+                ACTION_SYNC_BLOCK => sync_block(payload),
+                ACTION_QUERY => query(payload),
+                ACTION_GET => get(payload),
+                ACTION_SET => set(payload),
+                _ => unknown()
+            }
+        }
     };
 
     let global_state = GLOBAL_STATE.lock().unwrap();
@@ -674,7 +710,8 @@ fn unknown() -> Result<Value, Value> {
 }
 
 fn test(input: &Map<String, Value>) -> Result<Value, Value> {
-    test_parse_block();
+    // test_parse_block();
+    test_bridge();
     Ok(json!({}))
 }
 
@@ -749,38 +786,52 @@ fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
     Ok(json!({}))
 }
 
-fn init_runtime(input: &Map<String, Value>) -> Result<Value, Value> {
+fn init_runtime(input: InitRuntimeRequest) -> Result<Value, Value> {
     // TODO: Guard only initialize once
     if GLOBAL_STATE.lock().unwrap().initialized {
         return Err(json!({"message": "Already initialized"}))
     }
-    
+
+    // Generate identity
     let mut prng = rand::rngs::OsRng::default();
-    
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
-    
-    let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
-        Ok(r) => r,
-        Err(e) => {
-            println!("Error in create_attestation_report: {:?}", e);
-            return Err(json!({"message": "Error while connecting to IAS"}))
-        }
-    };
-    
+    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+    // Save identity
     let mut global_state = GLOBAL_STATE.lock().unwrap();
     (*global_state).initialized = true;
     *global_state.public_key = pk.clone();
     *global_state.private_key = sk.clone();
-    
+
+    // Produce remote attestation report
     let mut map = serde_json::Map::new();
-    map.insert("report".to_owned(), json!(attn_report));
-    map.insert("signature".to_owned(), json!(sig));
-    map.insert("signing_cert".to_owned(), json!(cert));
+    if !input.skip_ra {
+        let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
+            Ok(r) => r,
+            Err(e) => {
+                println!("Error in create_attestation_report: {:?}", e);
+                return Err(json!({"message": "Error while connecting to IAS"}))
+            }
+        };
+        
+        map.insert("report".to_owned(), json!(attn_report));
+        map.insert("signature".to_owned(), json!(sig));
+        map.insert("signing_cert".to_owned(), json!(cert));
+    }
+
+    // Initialize bridge
+    let raw_genesis = base64::decode(&input.bridge_genesis_info_b64)
+                          .expect("Bad bridge_genesis_innfo_b64");
+    let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
+                      ::decode(&mut raw_genesis.as_slice())
+                       .expect("Can't decode bridge_genesis_innfo_b64");
     
-    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-    // let s_sk = hex::encode_hex_compact(sk.serialize().as_ref());
-    
+    let mut state = STATE.lock().unwrap();
+    state.light_client.initialize_bridge(
+        genesis.block_header,
+        genesis.validator_set,
+        genesis.validator_set_proof);
+
     Ok(
         json!({
             "public_key": s_pk,
@@ -823,7 +874,6 @@ use types::TxRef;
 
 // extern crate parity_scale_codec as codec;
 extern crate runtime as chain;
-use parity_scale_codec::Decode;
 
 extern crate sp_runtime;
 use crate::sp_runtime::generic::Header;
@@ -903,6 +953,32 @@ fn test_parse_block() {
             dataset_preview: "pprev".to_owned()
         })).expect("jah");
     println!("sample command: {}", cmd_json);
+}
+
+fn test_bridge() {
+    // 1. load genesis
+    let raw_genesis = base64::decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAh9rd6Uku4dTja+JQVMLsOZ5GtS4nU0cdpuvgchlapeMDFwoudZe3t+PYTAU5HROaYrFX54eG2MCC8p3PTBETFAAIiNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4BAAAAAAAAANF8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAQAAAAAAAAAMoQKALhCA33I0FGiDoLZ6HBWl1uCIt+sLgUbPlfMJqUk/gukhEt6AviHkl5KFGndUmA+ClBT2kPSvmBOvZTWowWjNYfynHU6AOFjSvKwU3s/vvRg7QOrJeehLgo9nGfN91yHXkHcWLkuAUJegqkIzp2A6LPkZouRRsKgiY4Wu92V8JXrn3aSXrw2AXDYZ0c8CICTMvasQ+rEpErmfEmg+BzH19s/zJX4LP8adAWRyYW5kcGFfYXV0aG9yaXRpZXNJAQEIiNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4BAAAAAAAAANF8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAQAAAAAAAABtAYKmqACASqIhjIQMli+MpltqIZlc2FVhXCd/m9F6k9Q5u13xU3JQXHh0cmluc2ljX2luZGV4EAAAAACAc0yvcsUiYcma5kSPZKxrMxbyDufisOfMmIsX1bDxfHc=")
+                           .expect("Bad bridge_genesis_innfo_b64");
+    let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
+                      ::decode(&mut raw_genesis.as_slice())
+                       .expect("Can't decode bridge_genesis_info_b64");
+    
+    println!("bridge_genesis_info_b64: {:?}", genesis);
+    
+    let mut state = STATE.lock().unwrap();
+    let id = state.light_client.initialize_bridge(
+        genesis.block_header,
+        genesis.validator_set,
+        genesis.validator_set_proof)
+        .expect("Init bridge failed; qed");
+
+    // 2. import a few blocks
+    let raw_header = base64::decode("/YNUiuLexTFhCwS9smQZzq1EggRC0DWkgGuCbyaKKSQEhrlzSqBeoaYA0f7EXN/Z0WJINIurZbvBQU/2dKyaFxA8RCHwO2aMQ+Agbl7pMtC9Yn6AH0rYW30BFRZmva2k5QgGYXVyYSAQWrUPAAAAAAVhdXJhAQFsP5YkXJ1qPXxseyMUtX5QXTQZBbIKDqYeZq1mw1f6MyROgQ3BIJpp8wCgSTlPttAQmkw4Ol4b5tJ5VaBzUd2B").unwrap();
+    let header = chain::Header::decode(&mut raw_header.as_slice()).expect("Bad block1 header; qed");
+    let justification = base64::decode("CgAAAAAAAADew4hPceq4QYh0sxLxlaq0lTl+SWKw88vuBatKPewDcwEAAAAI3sOIT3HquEGIdLMS8ZWqtJU5fklisPPL7gWrSj3sA3MBAAAAXWeJEfa3FLKCvN8SYsx3wBx3N78oHP4THt65DyExstiuwZpF62Ci18/8hdr4cf+jbdYkSBBeMJuL9dTUY/QzAojcNBfVBY7EtFA+DBLqGgqJviAP6YkiQj1DNAFPprDu3sOIT3HquEGIdLMS8ZWqtJU5fklisPPL7gWrSj3sA3MBAAAA8TA1VpLNnlBnetJ74i0IY/Bv6InpDTkG2q4LCy0qVPG3WQhgadGFMInCyc38vOHKKwA7X2r7FGfQmuuPlwRCA9F8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAA==").unwrap();
+
+    state.light_client.submit_simple_header(id, header, justification)
+        .expect("Submit first block failed; qed");
 }
 
 const CONTRACT_ONE: u32 = 1;

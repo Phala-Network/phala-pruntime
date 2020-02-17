@@ -32,8 +32,7 @@ use sp_runtime::traits::{NumberFor, Block as BlockT, Header as HeaderT};
 use sp_core::{H256, Blake2Hasher};
 use sp_finality_grandpa::{AuthorityId, RoundNumber, SetId as SetIdNumber, AuthoritySignature};
 
-// use sc_finality_grandpa::{Commit, Error};  -> copied
-// use crate::communication;
+use super::wasm_hacks::header_hash;
 
 /// A GRANDPA justification for block finality, it includes a commit message and
 /// an ancestry proof including all headers routing all precommit target blocks
@@ -173,7 +172,7 @@ impl<Block: BlockT<Hash=H256>> GrandpaJustification<Block> {
 
 		let ancestry_hashes = self.votes_ancestries
 			.iter()
-			.map(|h: &Block::Header| h.hash())
+			.map(|h: &Block::Header| header_hash(h))
 			.collect();
 
 		if visited_hashes != ancestry_hashes {
@@ -192,12 +191,12 @@ struct AncestryChain<Block: BlockT> {
 	ancestry: HashMap<Block::Hash, Block::Header>,
 }
 
-impl<Block: BlockT> AncestryChain<Block> {
+impl<Block: BlockT<Hash=H256>> AncestryChain<Block> {
 	fn new(ancestry: &[Block::Header]) -> AncestryChain<Block> {
 		let ancestry: HashMap<_, _> = ancestry
 			.iter()
 			.cloned()
-			.map(|h: Block::Header| (h.hash(), h))
+			.map(|h: Block::Header| (header_hash(&h), h))
 			.collect();
 
 		AncestryChain { ancestry }
