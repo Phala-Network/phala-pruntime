@@ -4,8 +4,7 @@ use crate::std::collections::{HashSet, HashMap};
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
 
-extern crate csv_core;
-use self::csv_core::{Reader, ReadRecordResult};
+use csv_core::{Reader, ReadRecordResult};
 
 extern crate runtime as chain;
 
@@ -204,7 +203,7 @@ impl Contract {
       loop {
         let mut outbuf = [0; 2048];
         let mut ends = [0; 128];
-        let (result, nin, nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
+        let (result, nin, _nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
         bytes = &bytes[nin..];
         match result {
           ReadRecordResult::InputEmpty => {},
@@ -240,7 +239,7 @@ impl Contract {
       loop {
         let mut outbuf = [0; 2048];
         let mut ends = [0; 128];
-        let (result, nin, nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
+        let (result, nin, _nout, nfield) = rdr.read_record(bytes, &mut outbuf, &mut ends);
         match result {
           ReadRecordResult::InputEmpty => {},
           ReadRecordResult::OutputFull => panic!("record too large"),

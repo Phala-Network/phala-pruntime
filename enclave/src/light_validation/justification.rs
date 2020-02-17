@@ -27,9 +27,8 @@ use super::error::JustificationError as ClientError;
 use parity_scale_codec::{Encode, Decode};
 use finality_grandpa::voter_set::VoterSet;
 use finality_grandpa::{Error as GrandpaError};
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::{NumberFor, Block as BlockT, Header as HeaderT};
-use sp_core::{H256, Blake2Hasher};
+use sp_core::{H256};
 use sp_finality_grandpa::{AuthorityId, RoundNumber, SetId as SetIdNumber, AuthoritySignature};
 
 use super::wasm_hacks::header_hash;
@@ -252,9 +251,9 @@ pub type Commit<Block> = finality_grandpa::Commit<
 
 mod communication {
 	use crate::std::vec::Vec;
-	use parity_scale_codec::{Encode, Decode};
+	use parity_scale_codec::{Encode};
 	use sp_finality_grandpa::{AuthorityId, RoundNumber, AuthorityPair, SetId as SetIdNumber, AuthoritySignature};
-	use sp_runtime::traits::{NumberFor, Block as BlockT, Header as HeaderT};
+	use sp_runtime::traits::{NumberFor, Block as BlockT};
 	use sp_core::Pair;
 
 	pub type Message<Block> = finality_grandpa::Message<<Block as BlockT>::Hash, NumberFor<Block>>;
@@ -282,20 +281,3 @@ mod communication {
 		(message, round, set_id).encode()
 	}
 }
-
-// #[cfg_attr(test, derive(Debug))]
-// pub(crate) enum JustificationError {
-// 	BadJustification,
-// 	JustificationDecode,
-// }
-
-// #[cfg(test)]
-// impl From<ClientError> for JustificationError {
-// 	fn from(e: ClientError) -> Self {
-// 		match e {
-// 			ClientError::BadJustification(_) => JustificationError::BadJustification,
-// 			ClientError::JustificationDecode  => JustificationError::JustificationDecode,
-// 			_ => unreachable!(),
-// 		}
-// 	}
-// }

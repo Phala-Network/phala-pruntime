@@ -7,62 +7,33 @@
 #![cfg_attr(not(target_env = "sgx"), no_std)]
 #![cfg_attr(target_env = "sgx", feature(rustc_private))]
 
-extern crate sgx_types;
-extern crate sgx_trts;
 #[cfg(not(target_env = "sgx"))]
-#[macro_use]
-extern crate sgx_tstd as std;
+#[macro_use] extern crate sgx_tstd as std;
 
-extern crate sgx_tcrypto;
-extern crate sgx_tse;
-extern crate sgx_rand;
-
-extern crate rustls;
-extern crate webpki;
-extern crate webpki_roots;
-extern crate itertools;
-extern crate base64;
-extern crate httparse;
-extern crate yasna;
-extern crate bit_vec;
-extern crate num_bigint;
-extern crate chrono;
-extern crate secp256k1;
-#[macro_use]
-extern crate serde;
-#[macro_use]
-extern crate serde_json;
-#[macro_use]
-extern crate lazy_static;
-extern crate ring;
-// extern crate rand;
-
+// #[macro_use] extern crate serde;
+#[macro_use] extern crate serde_json;
+#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 
-use crate::std::backtrace::{self, PrintFormat};
 use sgx_types::*;
 use sgx_tse::*;
-//use sgx_trts::trts::{rsgx_raw_is_outside_enclave, rsgx_lfence};
 use sgx_tcrypto::*;
 use sgx_rand::*;
 
 use crate::std::prelude::v1::*;
 use crate::std::sync::Arc;
-use crate::std::mem;
 use crate::std::net::TcpStream;
 use crate::std::string::String;
 use crate::std::ptr;
 use crate::std::str;
-use crate::std::io::{Write, Read, BufReader};
+use crate::std::io::{Write, Read};
 use crate::std::untrusted::fs;
 use crate::std::vec::Vec;
-use crate::std::collections::HashMap;
 use crate::std::sync::SgxMutex;
 use itertools::Itertools;
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use serde_json::{Map, Value};
 use parity_scale_codec::{Encode, Decode};
-use secp256k1::*;
 use secp256k1::{SecretKey, PublicKey};
 use ring::rand::SecureRandom;
 
@@ -104,7 +75,6 @@ extern "C" {
     ) -> sgx_status_t;
 }
 
-use system::Trait;
 type ChainLightValidation = light_validation::LightValidation::<chain::Runtime>;
 
 #[derive(Serialize, Deserialize, Debug)]  //
@@ -132,9 +102,8 @@ fn de_from_b64<'de, D>(deserializer: D) -> Result<ChainLightValidation, D::Error
 where D: Deserializer<'de> {
     let s = String::deserialize(deserializer)?;
     let data = base64::decode(&s).map_err(de::Error::custom)?;
-    ChainLightValidation::decode(&mut data.as_slice()).map_err(|e| de::Error::custom("bad data"))
+    ChainLightValidation::decode(&mut data.as_slice()).map_err(|_| de::Error::custom("bad data"))
 }
-use std::collections::BTreeMap;
 
 lazy_static! {
     static ref STATE: SgxMutex<RuntimeState> = {
@@ -594,7 +563,7 @@ pub extern "C" fn ecall_set_state(
 ) -> sgx_status_t {
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
-    let input = input_value.as_object().unwrap();
+    let _input = input_value.as_object().unwrap();
 
     sgx_status_t::SGX_SUCCESS
 }
@@ -685,9 +654,11 @@ pub extern "C" fn ecall_handle(
     let output_json_vec_len_ptr = &output_json_vec_len as *const usize;
 
     unsafe {
-        ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
-                                 output_ptr,
-                                 output_json_vec_len);
+        if output_json_vec_len <= output_buf_len {
+            ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
+                                    output_ptr,
+                                    output_json_vec_len);
+        }
         ptr::copy_nonoverlapping(output_json_vec_len_ptr,
                                  output_len_ptr,
                                  std::mem::size_of_val(&output_json_vec_len));
@@ -709,7 +680,7 @@ fn unknown() -> Result<Value, Value> {
     }))
 }
 
-fn test(input: &Map<String, Value>) -> Result<Value, Value> {
+fn test(_input: &Map<String, Value>) -> Result<Value, Value> {
     // test_parse_block();
     test_bridge();
     Ok(json!({}))
@@ -722,8 +693,8 @@ const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
 // const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
 // const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
 
-fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut sessions = STATE.lock().unwrap();
+fn dump_states(_input: &Map<String, Value>) -> Result<Value, Value> {
+    let sessions = STATE.lock().unwrap();
     let serialized = serde_json::to_string(&*sessions).unwrap();
 
     // Your private data
@@ -750,7 +721,8 @@ fn dump_states(input: &Map<String, Value>) -> Result<Value, Value> {
         nonce,
         ring::aead::Aad::empty(),
         &mut in_out
-    ).map(|tag| in_out.extend(tag.as_ref()));
+    ).map(|tag| in_out.extend(tag.as_ref()))
+     .expect("seal_in_place_separate_tag failed");
 
     Ok(json!({
         "data": hex::encode_hex_compact(in_out.as_ref()),
@@ -830,7 +802,8 @@ fn init_runtime(input: InitRuntimeRequest) -> Result<Value, Value> {
     state.light_client.initialize_bridge(
         genesis.block_header,
         genesis.validator_set,
-        genesis.validator_set_proof);
+        genesis.validator_set_proof)
+        .expect("Bridge initialize failed");
 
     Ok(
         json!({
@@ -872,13 +845,8 @@ mod contract;
 mod types;
 use types::TxRef;
 
-// extern crate parity_scale_codec as codec;
 extern crate runtime as chain;
 
-extern crate sp_runtime;
-use crate::sp_runtime::generic::Header;
-
-use crate::std::fmt;
 
 fn fmt_call(call: &chain::Call) -> String {
     match call {
@@ -1046,7 +1014,7 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     }))
 }
 
-fn get_info(input: &Map<String, Value>) -> Result<Value, Value> {
+fn get_info(_input: &Map<String, Value>) -> Result<Value, Value> {
     let global_state = GLOBAL_STATE.lock().unwrap();
 
     let initialized = global_state.initialized;
@@ -1075,7 +1043,7 @@ fn query(input: &Map<String, Value>) -> Result<Value, Value> {
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
-    let mut state = STATE.lock().unwrap();
+    let state = STATE.lock().unwrap();
     let path = input.get("path").unwrap().as_str().unwrap();
 
     let data = match state.contract.get(&path.to_string()) {

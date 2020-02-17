@@ -163,7 +163,7 @@ impl<T: Trait> LightValidation<T>
 		match self.tracked_bridges.get_mut(&bridge_id) {
 			Some(bridge_info) => {
 				bridge_info.last_finalized_block_header = header;
-				if (validator_set_id > bridge_info.current_validator_set_id) {
+				if validator_set_id > bridge_info.current_validator_set_id {
 					bridge_info.current_validator_set = validator_set;
 					bridge_info.current_validator_set_id = validator_set_id;
 				}
@@ -181,7 +181,7 @@ impl<T: Trait> LightValidation<T>
 		grandpa_proof: Justification
 	) -> Result<(), Error> {
 		let bridge = self.tracked_bridges.get(&bridge_id).ok_or(Error::NoSuchBridgeExists)?;
-		if (header_hash(&bridge.last_finalized_block_header) != *header.parent_hash()) {
+		if header_hash(&bridge.last_finalized_block_header) != *header.parent_hash() {
 			return Err(Error::HeaderAncestryMismatch);
 		}
 		let ancestry_proof = vec![];
