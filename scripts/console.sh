@@ -38,6 +38,9 @@ function get_result {
 }
 
 case $1 in
+run)
+  make && cd bin && ./app
+;;
 set-dataset)
   set_dataset
 ;;
