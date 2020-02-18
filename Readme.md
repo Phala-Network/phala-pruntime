@@ -1,55 +1,38 @@
-Haven
+pRuntime
 ====
 
 **Working in progress**
 
-a SGX app barebone.
+This is the implementation of pRuntime (Phala Network TEE Runtime) based on Intel SGX. It's the
+runtime to execute confidential smart contracts.
+
+The runtime contains the following components:
+
+- Identity manager
+- Remote Attestation module
+- Offchain bridge (by a Substrate light client)
+- Confiidential contract executor & state manager
+- Restful RPC service
+
+## Build
 
 - Clone the repo
 - `git submodule init`
 - `git submodule update`
 - `make`
-- make sure put `spid.txt` and `key.txt` into `bin/`, the SPID must be linkable
+- Make sure put `spid.txt` and `key.txt` into `bin/`, the SPID must be linkable
 - `cd bin`
 - `./app`
 
-POST `/register`
+Intel SGX Driver and SDK are needed. Set environment variable `SGX_MODE=SW` while building to run
+it in computer without SGX.
 
-```json
-{
-  "input": {
-    "account": "jasl"
-  },
-  "nonce": {
-    "fuck": "rust"
-  }
-}
-```
+## RPC
 
-POST `/status`
+Helper script: `script/console.sh`
 
-```json
-{
-  "input": {
-    "account": "test"
-  },
-  "nonce": {
-    "fuck": "rust"
-  }
-}
-```
-
-POST `/transfer`
-
-```json
-{
-  "input": {
-    "account": "jasl",
-    "to_account": "test",
-    "quantity": 100
-  },
-  "nonce": {
-    "fuck": "rust"
-  }
-}
+```bash
+./script/console.sh get_info
+./script/console.sh init
+./script/console.sh dump_states
 ```
