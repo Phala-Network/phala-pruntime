@@ -82,6 +82,7 @@ struct RuntimeState {
     contract: contract::Contract,
     #[serde(serialize_with = "se_to_b64", deserialize_with = "de_from_b64")]
     light_client: ChainLightValidation,
+    main_bridge: u64
 }
 
 struct GlobalState {
@@ -109,7 +110,8 @@ lazy_static! {
     static ref STATE: SgxMutex<RuntimeState> = {
         SgxMutex::new(RuntimeState {
             contract: contract::Contract::new(),
-            light_client: ChainLightValidation::new()
+            light_client: ChainLightValidation::new(),
+            main_bridge: 0
         })
     };
 
@@ -552,7 +554,7 @@ const ACTION_SET: u8 = 21;
 const ACTION_GET: u8 = 22;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct InitRuntimeRequest {
+struct InitRuntimeReq {
     skip_ra: bool,
     bridge_genesis_info_b64: String
 }
@@ -758,7 +760,7 @@ fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
     Ok(json!({}))
 }
 
-fn init_runtime(input: InitRuntimeRequest) -> Result<Value, Value> {
+fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     // TODO: Guard only initialize once
     if GLOBAL_STATE.lock().unwrap().initialized {
         return Err(json!({"message": "Already initialized"}))
@@ -799,11 +801,12 @@ fn init_runtime(input: InitRuntimeRequest) -> Result<Value, Value> {
                        .expect("Can't decode bridge_genesis_innfo_b64");
     
     let mut state = STATE.lock().unwrap();
-    state.light_client.initialize_bridge(
+    let bridge_id = state.light_client.initialize_bridge(
         genesis.block_header,
         genesis.validator_set,
         genesis.validator_set_proof)
         .expect("Bridge initialize failed");
+    state.main_bridge = bridge_id;
 
     Ok(
         json!({
@@ -994,6 +997,18 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     // TODO: handle error ^^
 
     let block = parse_block(&block_data).map_err(|_| error_msg("Invalid block (err)"))?;
+
+    if block.block.header.number > 0 {
+        let mut state = STATE.lock().unwrap();
+        let bridge_id = state.main_bridge;
+        let justification = block.justification.clone()
+            .ok_or_else(|| error_msg("Missing justification"))?;
+        state.light_client.submit_simple_header(
+            bridge_id,
+            block.block.header.clone(),
+            justification
+        ).map_err(|_| error_msg("Light validation vailed"))?
+    }
 
     // it's the block needed
     let mut global_state = GLOBAL_STATE.lock().unwrap();
