@@ -61,7 +61,7 @@ sp-core = { package = "sp-core", path = "../../experimental-node/substrate/primi
 # sc-finality-grandpa = { package = "sc-finality-grandpa", path = "../../experimental-node/substrate/client/finality-grandpa/"  }
 
 [patch.crates-io]
-memchr = { path = "../memchr-nostd", default-features = false } # { version = "2", path = "../vendor/rust-memchr" }
+memchr = { package = "memchr", path = "../memchr-nostd", default-features = false }
 # aho-corasick = { git = "https://github.com/mesalock-linux/aho-corasick-sgx" }
 # regex = { git = "https://github.com/mesalock-linux/regex-sgx" }
 # Inflector = { path = "../../Inflector" }
