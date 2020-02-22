@@ -37,9 +37,16 @@ function get_result {
   cat /tmp/req_result.json | jq '.payload|fromjson|.value' -r | base64 -d
 }
 
+function init {
+  req init_runtime "{\"skip_ra\": true, \"bridge_genesis_info_b64\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAh9rd6Uku4dTja+JQVMLsOZ5GtS4nU0cdpuvgchlapeMDFwoudZe3t+PYTAU5HROaYrFX54eG2MCC8p3PTBETFAAIiNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4BAAAAAAAAANF8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAQAAAAAAAAAMnQFkcmFuZHBhX2F1dGhvcml0aWVzSQEBCIjcNBfVBY7EtFA+DBLqGgqJviAP6YkiQj1DNAFPprDuAQAAAAAAAADRfC14I+vyYP0Tjy1+J9EUwBRdlotf9QBhJfJBT62uaQEAAAAAAAAAbQGCpqgAgEqiIYyEDJYvjKZbaiGZXNhVYVwnf5vRepPUObtd8VNyUFx4dHJpbnNpY19pbmRleBAAAAAAgHNMr3LFImHJmuZEj2SsazMW8g7n4rDnzJiLF9Ww8Xx3oQKALhCA33I0FGiDoLZ6HBWl1uCIt+sLgUbPlfMJqUk/gukhEt6AviHkl5KFGndUmA+ClBT2kPSvmBOvZTWowWjNYfynHU6AOFjSvKwU3s/vvRg7QOrJeehLgo9nGfN91yHXkHcWLkuAUJegqkIzp2A6LPkZouRRsKgiY4Wu92V8JXrn3aSXrw2AXDYZ0c8CICTMvasQ+rEpErmfEmg+BzH19s/zJX4LP8Y=\"}"
+}
+
 case $1 in
 run)
   make && cd bin && ./app
+;;
+init)
+  init
 ;;
 set-dataset)
   set_dataset

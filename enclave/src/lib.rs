@@ -40,6 +40,7 @@ use ring::rand::SecureRandom;
 mod cert;
 mod hex;
 mod light_validation;
+mod ecdh;
 
 extern "C" {
     pub fn ocall_sgx_init_quote(
@@ -85,11 +86,13 @@ struct RuntimeState {
     main_bridge: u64
 }
 
-struct GlobalState {
+struct LocalState {
     initialized: bool,
     public_key: Box<PublicKey>,
     private_key: Box<SecretKey>,
     blocknum: u32,
+    ecdh_private_key: Option<ring::agreement::EphemeralPrivateKey>,
+    ecdh_public_key: Option<ring::agreement::PublicKey>,
 }
 
 fn se_to_b64<S>(value: &ChainLightValidation, serializer: S) -> Result<S::Ok, S::Error>
@@ -115,17 +118,19 @@ lazy_static! {
         })
     };
 
-    static ref GLOBAL_STATE: SgxMutex<GlobalState> = {
+    static ref LOCAL_STATE: SgxMutex<LocalState> = {
         // TODO: Hard code init value
         let sk = SecretKey::parse_slice(hex::decode_hex("8431d995681fc0a8576a56bbc2e24a322f84b1408d4bf35694c325c9407dd2e8").as_slice()).unwrap();
         let pk = PublicKey::from_secret_key(&sk);
 
         SgxMutex::new(
-            GlobalState {
+            LocalState {
                 initialized: false,
                 public_key: Box::new(pk),
                 private_key: Box::new(sk),
-                blocknum: 0
+                blocknum: 0,
+                ecdh_private_key: None,
+                ecdh_public_key: None,
             }
         )
     };
@@ -601,7 +606,7 @@ pub extern "C" fn ecall_handle(
         }
     };
 
-    let global_state = GLOBAL_STATE.lock().unwrap();
+    let local_state = LOCAL_STATE.lock().unwrap();
 
 //    let nonce = input_value.get("nonce").unwrap().as_object().unwrap();
 //    let nonce_vec = serde_json::to_vec(&nonce).unwrap();
@@ -617,7 +622,7 @@ pub extern "C" fn ecall_handle(
 
             let hash_payload = rsgx_sha256_slice(&s_payload.as_bytes()).unwrap();
             let message = secp256k1::Message::parse_slice(&hash_payload[..32]).unwrap();
-            let (signature, _recovery_id) = secp256k1::sign(&message, &global_state.private_key);
+            let (signature, _recovery_id) = secp256k1::sign(&message, &local_state.private_key);
 
             json!({
                 "status": "ok",
@@ -635,7 +640,7 @@ pub extern "C" fn ecall_handle(
 
             let hash_payload = rsgx_sha256_slice(&s_payload.as_bytes()).unwrap();
             let message = secp256k1::Message::parse_slice(&hash_payload[..32]).unwrap();
-            let (signature, _recovery_id) = secp256k1::sign(&message, &global_state.private_key);
+            let (signature, _recovery_id) = secp256k1::sign(&message, &local_state.private_key);
 
             json!({
                 "status": "error",
@@ -684,7 +689,8 @@ fn unknown() -> Result<Value, Value> {
 
 fn test(_input: &Map<String, Value>) -> Result<Value, Value> {
     // test_parse_block();
-    test_bridge();
+    // test_bridge();
+    test_ecdh();
     Ok(json!({}))
 }
 
@@ -762,7 +768,7 @@ fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
 
 fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     // TODO: Guard only initialize once
-    if GLOBAL_STATE.lock().unwrap().initialized {
+    if LOCAL_STATE.lock().unwrap().initialized {
         return Err(json!({"message": "Already initialized"}))
     }
 
@@ -771,11 +777,20 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
     let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+    
+    // ECDH identity
+    let ecdh_sk = ecdh::generate_key();
+    let ecdh_pk = ecdh_sk.compute_public_key().expect("can't compute pubkey");
+    let s_ecdh_pk = hex::encode_hex_compact(ecdh_pk.as_ref());
+    println!("ECDH pubkey: {:?}", ecdh_pk);
+
     // Save identity
-    let mut global_state = GLOBAL_STATE.lock().unwrap();
-    (*global_state).initialized = true;
-    *global_state.public_key = pk.clone();
-    *global_state.private_key = sk.clone();
+    let mut local_state = LOCAL_STATE.lock().unwrap();
+    (*local_state).initialized = true;
+    *local_state.public_key = pk.clone();
+    *local_state.private_key = sk.clone();
+    local_state.ecdh_private_key = Some(ecdh_sk);
+    local_state.ecdh_public_key = Some(ecdh_pk);
 
     // Produce remote attestation report
     let mut map = serde_json::Map::new();
@@ -795,10 +810,10 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
 
     // Initialize bridge
     let raw_genesis = base64::decode(&input.bridge_genesis_info_b64)
-                          .expect("Bad bridge_genesis_innfo_b64");
+                          .expect("Bad bridge_genesis_info_b64");
     let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
                       ::decode(&mut raw_genesis.as_slice())
-                       .expect("Can't decode bridge_genesis_innfo_b64");
+                       .expect("Can't decode bridge_genesis_info_b64");
     
     let mut state = STATE.lock().unwrap();
     let bridge_id = state.light_client.initialize_bridge(
@@ -811,6 +826,7 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     Ok(
         json!({
             "public_key": s_pk,
+            "ecdh_public_key": s_ecdh_pk,
             "attestation": {
                 "version": 1,
                 "provider": "SGX",
@@ -952,6 +968,15 @@ fn test_bridge() {
         .expect("Submit first block failed; qed");
 }
 
+fn test_ecdh() {
+    let bob_pub: [u8; 65] = [0x04, 0xb8, 0xd1, 0x8e, 0x7d, 0xe4, 0xc1, 0x10, 0x69, 0x48, 0x7b, 0x5c, 0x1e, 0x6e, 0xa5, 0xdf, 0x04, 0x51, 0xf7, 0xe1, 0xa8, 0x46, 0x17, 0x5b, 0xf6, 0xfd, 0xf8, 0xe8, 0xea, 0x5c, 0x68, 0xcd, 0xfb, 0xca, 0x0e, 0x1f, 0x17, 0x1c, 0x0b, 0xee, 0x3d, 0x34, 0x71, 0x11, 0x07, 0x67, 0x2d, 0x6a, 0x13, 0x57, 0x26, 0x7d, 0x5a, 0xcb, 0x3b, 0x98, 0x4c, 0xa5, 0xbf, 0xf4, 0xbf, 0x33, 0x78, 0x32, 0x96];
+    
+    let local_state = LOCAL_STATE.lock().unwrap();
+    let alice_priv = &local_state.ecdh_private_key.as_ref().expect("ECDH private key not initialized");
+    let key = ecdh::agree(alice_priv, bob_pub.as_ref());
+    println!("ECDH derived secret key: {:?}", key);    
+}
+
 const CONTRACT_ONE: u32 = 1;
 
 fn handle_execution(state : &mut RuntimeState, pos: &TxRef,
@@ -1011,18 +1036,16 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     }
 
     // it's the block needed
-    let mut global_state = GLOBAL_STATE.lock().unwrap();
-    if block.block.header.number != global_state.blocknum {
+    let mut local_state = LOCAL_STATE.lock().unwrap();
+    if block.block.header.number != local_state.blocknum {
         return Err(error_msg("Unexpected block"))
     }
-
-    // TODO: validate the block (light client validation logic here)
 
     // trigger updates
     dispatch(&block);
 
     // move forward
-    (*global_state).blocknum = block.block.header.number + 1;
+    (*local_state).blocknum = block.block.header.number + 1;
 
     Ok(json!({
         "synced_to": block.block.header.number
@@ -1030,16 +1053,21 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
 }
 
 fn get_info(_input: &Map<String, Value>) -> Result<Value, Value> {
-    let global_state = GLOBAL_STATE.lock().unwrap();
+    let local_state = LOCAL_STATE.lock().unwrap();
 
-    let initialized = global_state.initialized;
-    let pk = &global_state.public_key;
+    let initialized = local_state.initialized;
+    let pk = &local_state.public_key;
     let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-    let blocknum = global_state.blocknum;
+    let s_ecdh_pk = match &local_state.ecdh_public_key {
+        Some(ecdh_public_key) => hex::encode_hex_compact(ecdh_public_key.as_ref()),
+        None => "".to_string()
+    };
+    let blocknum = local_state.blocknum;
 
     Ok(json!({
         "initialized": initialized,
         "public_key": s_pk,
+        "ecdh_public_key": s_ecdh_pk,
         "blocknum": blocknum
     }))
 }
