@@ -41,6 +41,7 @@ mod cert;
 mod hex;
 mod light_validation;
 mod ecdh;
+mod aead;
 
 extern "C" {
     pub fn ocall_sgx_init_quote(
@@ -563,6 +564,17 @@ struct InitRuntimeReq {
     skip_ra: bool,
     bridge_genesis_info_b64: String
 }
+#[derive(Serialize, Deserialize, Debug)]
+struct TestReq {
+    test_parse_block: Option<bool>,
+    test_bridge: Option<bool>,
+    test_ecdh: Option<TestEcdhParam>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct TestEcdhParam {
+    pubkey_hex: Option<String>,
+    message_b64: Option<String>,
+}
 
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
@@ -585,15 +597,15 @@ pub extern "C" fn ecall_handle(
     let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let input_value = input.get("input").unwrap().clone();
     // Strong typed 
+    fn load_param<T: de::DeserializeOwned>(input_value: serde_json::value::Value) -> T {
+        serde_json::from_value(input_value).unwrap()
+    }
     let result = match action {
-        ACTION_INIT_RUNTIME => {
-            let param = serde_json::from_value(input_value).unwrap();
-            init_runtime(param)
-        },
+        ACTION_INIT_RUNTIME => init_runtime(load_param(input_value)),
+        ACTION_TEST =>  test(load_param(input_value)),
         _ => {
             let payload = input_value.as_object().unwrap();
             match action {
-                ACTION_TEST => test(payload),
                 ACTION_GET_INFO => get_info(payload),
                 ACTION_DUMP_STATES => dump_states(payload),
                 ACTION_LOAD_STATES => load_states(payload),
@@ -687,10 +699,16 @@ fn unknown() -> Result<Value, Value> {
     }))
 }
 
-fn test(_input: &Map<String, Value>) -> Result<Value, Value> {
-    // test_parse_block();
-    // test_bridge();
-    test_ecdh();
+fn test(param: TestReq) -> Result<Value, Value> {
+    if param.test_parse_block == Some(true) {
+        test_parse_block();
+    }
+    if param.test_bridge == Some(true) {
+        test_bridge();
+    }
+    if let Some(p) = param.test_ecdh {
+        test_ecdh(p);
+    }
     Ok(json!({}))
 }
 
@@ -715,45 +733,21 @@ fn dump_states(_input: &Map<String, Value>) -> Result<Value, Value> {
     println!("in_out len {}", in_out.len());
 
     // Random data must be used only once per encryption
-    let mut nonce_vec = [0 as u8; 12];
-
-    // Fill nonce with random data
-    let rand = ring::rand::SystemRandom::new();
-    rand.fill(&mut nonce_vec).unwrap();
-    let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_vec);
-
-    let unbound_key = ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, SECRET).unwrap();
-    let key = ring::aead::LessSafeKey::new(unbound_key);
-
-    key.seal_in_place_separate_tag(
-        nonce,
-        ring::aead::Aad::empty(),
-        &mut in_out
-    ).map(|tag| in_out.extend(tag.as_ref()))
-     .expect("seal_in_place_separate_tag failed");
+    let iv = aead::generate_iv();
+    aead::encrypt(&iv, SECRET, &mut in_out);
 
     Ok(json!({
         "data": hex::encode_hex_compact(in_out.as_ref()),
-        "nonce": hex::encode_hex_compact(&nonce_vec)
+        "nonce": hex::encode_hex_compact(&iv)
     }))
 }
 
 fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
-    let unbound_key = ring::aead::UnboundKey::new(&ring::aead::AES_256_GCM, SECRET).unwrap();
-    let key = ring::aead::LessSafeKey::new(unbound_key);
-
     let nonce_vec = hex::decode_hex(input.get("nonce").unwrap().as_str().unwrap());
-    let mut nonce_arr= [0u8; 12];
-    nonce_arr.copy_from_slice(&nonce_vec[..12]);
-    let nonce = ring::aead::Nonce::assume_unique_for_key(nonce_arr);
-
-    println!("{}", input.get("data").unwrap().as_str().unwrap());
     let mut in_out = hex::decode_hex(input.get("data").unwrap().as_str().unwrap());
-    let decrypted_data = key.open_in_place(
-        nonce,
-        ring::aead::Aad::empty(),
-        &mut in_out,
-    ).unwrap();
+    println!("{}", input.get("data").unwrap().as_str().unwrap());
+
+    let decrypted_data = aead::decrypt(&nonce_vec, &*SECRET, &mut in_out);
     println!("{}", String::from_utf8(decrypted_data.to_vec()).unwrap());
 
     let deserialized: RuntimeState = serde_json::from_slice(decrypted_data).unwrap();
@@ -968,13 +962,30 @@ fn test_bridge() {
         .expect("Submit first block failed; qed");
 }
 
-fn test_ecdh() {
+fn test_ecdh(params: TestEcdhParam) {
     let bob_pub: [u8; 65] = [0x04, 0xb8, 0xd1, 0x8e, 0x7d, 0xe4, 0xc1, 0x10, 0x69, 0x48, 0x7b, 0x5c, 0x1e, 0x6e, 0xa5, 0xdf, 0x04, 0x51, 0xf7, 0xe1, 0xa8, 0x46, 0x17, 0x5b, 0xf6, 0xfd, 0xf8, 0xe8, 0xea, 0x5c, 0x68, 0xcd, 0xfb, 0xca, 0x0e, 0x1f, 0x17, 0x1c, 0x0b, 0xee, 0x3d, 0x34, 0x71, 0x11, 0x07, 0x67, 0x2d, 0x6a, 0x13, 0x57, 0x26, 0x7d, 0x5a, 0xcb, 0x3b, 0x98, 0x4c, 0xa5, 0xbf, 0xf4, 0xbf, 0x33, 0x78, 0x32, 0x96];
+
+    let pubkey_data = params.pubkey_hex.map(|h| hex::decode_hex(&h));
+    let pk = match pubkey_data.as_ref() {
+        Some(d) => d.as_slice(),
+        None => bob_pub.as_ref()
+    };
     
     let local_state = LOCAL_STATE.lock().unwrap();
-    let alice_priv = &local_state.ecdh_private_key.as_ref().expect("ECDH private key not initialized");
-    let key = ecdh::agree(alice_priv, bob_pub.as_ref());
-    println!("ECDH derived secret key: {:?}", key);    
+    let alice_priv = &local_state.ecdh_private_key.as_ref()
+        .expect("ECDH private key not initialized");
+    let key = ecdh::agree(alice_priv, pk);
+    println!("ECDH derived secret key: {}", hex::encode_hex_compact(&key));
+
+    if let Some(msg_b64) = params.message_b64 {
+        let mut msg = base64::decode(&msg_b64)
+            .expect("Failed to decode msg_b64");
+        let iv = aead::generate_iv();
+        aead::encrypt(&iv, &key, &mut msg);
+
+        println!("AES-GCM: {}", hex::encode_hex_compact(&msg));
+        println!("IV: {}", hex::encode_hex_compact(&iv));
+    }
 }
 
 const CONTRACT_ONE: u32 = 1;
