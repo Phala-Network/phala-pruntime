@@ -35,7 +35,6 @@ use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use serde_json::{Map, Value};
 use parity_scale_codec::{Encode, Decode};
 use secp256k1::{SecretKey, PublicKey};
-use ring::rand::SecureRandom;
 
 mod cert;
 mod hex;
@@ -79,9 +78,9 @@ extern "C" {
 
 type ChainLightValidation = light_validation::LightValidation::<chain::Runtime>;
 
-#[derive(Serialize, Deserialize, Debug)]  //
+#[derive(Serialize, Deserialize, Debug)]
 struct RuntimeState {
-    contract: contract::Contract,
+    contract1: contracts::data_plaza::DataPlaza,
     #[serde(serialize_with = "se_to_b64", deserialize_with = "de_from_b64")]
     light_client: ChainLightValidation,
     main_bridge: u64
@@ -113,7 +112,7 @@ where D: Deserializer<'de> {
 lazy_static! {
     static ref STATE: SgxMutex<RuntimeState> = {
         SgxMutex::new(RuntimeState {
-            contract: contract::Contract::new(),
+            contract1: contracts::data_plaza::DataPlaza::new(),
             light_client: ChainLightValidation::new(),
             main_bridge: 0
         })
@@ -854,9 +853,11 @@ SignedBlock {
 }
 */
 
-mod contract;
+mod contracts;
 mod types;
+
 use types::TxRef;
+use contracts::Contract;
 
 extern crate runtime as chain;
 
@@ -925,11 +926,11 @@ fn test_parse_block() {
     println!("test_parse_block: addr = {}", format_address(ref_addr));
 
     let cmd_json = serde_json::to_string_pretty(
-        &contract::Command::List(contract::ItemDetails {
+        &contracts::data_plaza::Command::List(contracts::data_plaza::ItemDetails {
             name: "nname".to_owned(),
             category: "ccategory".to_owned(),
             description: "ddesc".to_owned(),
-            price: contract::PricePolicy::PerRow { price: 100_u128 },
+            price: contracts::data_plaza::PricePolicy::PerRow { price: 100_u128 },
             dataset_link: "llink".to_owned(),
             dataset_preview: "pprev".to_owned()
         })).expect("jah");
@@ -990,21 +991,21 @@ fn test_ecdh(params: TestEcdhParam) {
 
 const CONTRACT_ONE: u32 = 1;
 
-fn handle_execution(state : &mut RuntimeState, pos: &TxRef,
+fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
                     origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
                     contract_id: u32, payload: &Vec<u8>) {
     if contract_id != CONTRACT_ONE {
         println!("handle_executiioin: Skipped unknown contract: {}", contract_id);
         return
     }
-    let cmd: contract::Command = serde_json::from_slice(payload.as_slice()).unwrap();
+    let cmd: contracts::data_plaza::Command = serde_json::from_slice(payload.as_slice()).unwrap();
     // TODO: handle error ^^
 
     let addr = &origin.unwrap().0;
     let origin = format_address(&addr);
 
     println!("handle_execution: about to call handle_command");
-    state.contract.handle_command(&origin, pos, cmd)
+    state.contract1.handle_command(&origin, pos, cmd)
 }
 
 fn dispatch(block: &chain::SignedBlock) {
@@ -1089,8 +1090,8 @@ fn query(input: &Map<String, Value>) -> Result<Value, Value> {
     let err = error_msg("Malformed request");
 
     let req_value = input.get("request").ok_or(err.clone())?.clone();
-    let req: contract::Request = serde_json::from_value(req_value).map_err(|_| err)?;
-    let res = state.contract.query(req);
+    let req: contracts::data_plaza::Request = serde_json::from_value(req_value).map_err(|_| err)?;
+    let res = state.contract1.handle_query(req);
     let res_value = serde_json::to_value(res).unwrap();
 
     Ok(res_value)
@@ -1100,7 +1101,7 @@ fn get(input: &Map<String, Value>) -> Result<Value, Value> {
     let state = STATE.lock().unwrap();
     let path = input.get("path").unwrap().as_str().unwrap();
 
-    let data = match state.contract.get(&path.to_string()) {
+    let data = match state.contract1.get(&path.to_string()) {
         Some(d) => d,
         None => {
             return Err(error_msg("Data doesn't exist"))
@@ -1121,7 +1122,7 @@ fn set(input: &Map<String, Value>) -> Result<Value, Value> {
     let data_b64 = input.get("data").unwrap().as_str().unwrap();
 
     let data = base64::decode(data_b64).map_err(|_| error_msg("Failed to decode base64 data"))?;
-    state.contract.set(path.to_string(), data);
+    state.contract1.set(path.to_string(), data);
 
     Ok(json!({
         "path": path.to_string(),

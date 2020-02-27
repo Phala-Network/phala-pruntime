@@ -8,6 +8,7 @@ use csv_core::{Reader, ReadRecordResult};
 
 extern crate runtime as chain;
 
+use crate::contracts;
 use crate::types::TxRef;
 
 pub type ItemId = u32;
@@ -103,57 +104,19 @@ pub enum Response {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Contract {
+pub struct DataPlaza {
   items: Vec<Item>,
   orders: Vec<Order>,
   #[serde(skip)]
   dataset: HashMap<String, Vec<u8>>
 }
 
-impl Contract {
-  pub fn new() -> Contract {
-    Contract {
+impl DataPlaza {
+  pub fn new() -> Self {
+    Self {
       items: Vec::<Item>::new(),
       orders: Vec::<Order>::new(),
       dataset: HashMap::<String, Vec<u8>>::new(),
-    }
-  }
-
-  pub fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command) {
-    match cmd {
-      Command::List(details) => {
-        self.items.push(Item {
-          id: self.items.len() as ItemId,
-          txref: txref.clone(),
-          seller: origin.clone(),
-          details: details,
-        })
-      },
-      Command::OpenOrder(details) => {
-        self.orders.push(Order {
-          id: self.orders.len() as OrderId,
-          txref: txref.clone(),
-          buyer: origin.clone(),
-          details: details,
-          state: OrderState {  // TODO
-            data_ready: false,
-            query_ready: false,
-            result_ready: false,
-            matched_rows: 0,
-            result_path: String::new(),
-          }
-        });
-      },
-    }
-  }
-
-  pub fn query(&mut self, req: Request) -> Response {
-    match req {
-      Request::GetItems => Response::GetItems { items: self.items.clone() },
-      Request::GetOrders => {
-        self.update_order_state();
-        Response::GetOrders { orders: self.orders.clone() }
-      },
     }
   }
 
@@ -296,4 +259,46 @@ impl Contract {
     &outbuf[start..end]
   }
 
+}
+
+impl contracts::Contract<Command, Request, Response> for DataPlaza {
+  fn id(&self) -> contracts::ContractId { 1 }
+
+  fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command) {
+    match cmd {
+      Command::List(details) => {
+        self.items.push(Item {
+          id: self.items.len() as ItemId,
+          txref: txref.clone(),
+          seller: origin.clone(),
+          details: details,
+        })
+      },
+      Command::OpenOrder(details) => {
+        self.orders.push(Order {
+          id: self.orders.len() as OrderId,
+          txref: txref.clone(),
+          buyer: origin.clone(),
+          details: details,
+          state: OrderState {  // TODO
+            data_ready: false,
+            query_ready: false,
+            result_ready: false,
+            matched_rows: 0,
+            result_path: String::new(),
+          }
+        });
+      },
+    }
+  }
+
+  fn handle_query(&mut self, req: Request) -> Response {
+    match req {
+      Request::GetItems => Response::GetItems { items: self.items.clone() },
+      Request::GetOrders => {
+        self.update_order_state();
+        Response::GetOrders { orders: self.orders.clone() }
+      },
+    }
+  }
 }
