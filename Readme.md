@@ -27,6 +27,8 @@ The runtime contains the following components:
 Intel SGX Driver and SDK are needed. Set environment variable `SGX_MODE=SW` while building to run
 it in computer without SGX.
 
+The dev mode keys in `spid.txt` and `key.txt` can be obtainied [from Intel](https://software.intel.com/en-us/sgx/attestation-services).
+
 ## RPC
 
 Helper script: `script/console.sh`
