@@ -60,7 +60,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
 
         let mut resp_map = BTreeMap::<chain::AccountId, Option<chain::Balance>>::new();
         for i in req.accounts {
-            resp_map.insert(*i, self.amounts.get(&i).copied());
+            resp_map.insert(i, self.amounts.get(&i).copied());
         };
         Response{
             amounts: resp_map
