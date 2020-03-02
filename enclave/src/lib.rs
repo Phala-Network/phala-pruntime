@@ -32,7 +32,7 @@ use crate::std::vec::Vec;
 use crate::std::sync::SgxMutex;
 use itertools::Itertools;
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
-use serde_json::{Map, Value, Number};
+use serde_json::{Map, Value};
 use parity_scale_codec::{Encode, Decode};
 use secp256k1::{SecretKey, PublicKey};
 

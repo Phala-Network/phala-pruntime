@@ -1,4 +1,4 @@
-use crate::std::collections::{BtreeMap};
+use crate::std::collections::{BTreeMap};
 use serde::{de, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
 use crate::std::prelude::v1::*;
@@ -11,7 +11,7 @@ extern crate runtime as chain;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
-    amounts: BtreeMap<chain::AccountId, chain::Balance>,
+    amounts: BTreeMap<chain::AccountId, chain::Balance>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,7 +21,7 @@ pub enum Command{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransferDetails{
-    amounts: BtreeMap<chain::AccountId,chain::Balance>,
+    amounts: BTreeMap<chain::AccountId,chain::Balance>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,13 +31,13 @@ pub struct Request{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Response{
-    amounts: BtreeMap<chain::AccountId, Option<chain::Balance>>,
+    amounts: BTreeMap<chain::AccountId, Option<chain::Balance>>,
 }
 
 impl Balance{
     pub fn new() -> Self{
         Balance{
-            amounts: BtreeMap::<chain::AccountId, chain::Balance>::new(),
+            amounts: BTreeMap::<chain::AccountId, chain::Balance>::new(),
         }
     }
 }
@@ -58,7 +58,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     fn handle_query(&mut self, req: Request) -> Response{
         // todo: should validate user id first.
 
-        let mut resp_map = BtreeMap::<chain::AccountId, Option<chain::Balance>>::new();
+        let mut resp_map = BTreeMap::<chain::AccountId, Option<chain::Balance>>::new();
         for i in &req.accounts {
             resp_map.insert(i, self.amounts.get(i));
         };
