@@ -49,7 +49,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         match cmd {
             Command::Transfer(details) => {
                 for (account, balance) in details.amounts.iter() {
-                    self.amounts.insert(account,balance);
+                    self.amounts.insert(*account, *balance);
                 }
             }
         }
@@ -59,10 +59,12 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         // todo: should validate user id first.
 
         let mut resp_map = BTreeMap::<chain::AccountId, Option<chain::Balance>>::new();
-        for i in &req.accounts {
-            resp_map.insert(i, self.amounts.get(i));
+        for i in req.accounts {
+            resp_map.insert(*i, self.amounts.get(&i).copied());
         };
-        resp_map
+        Response{
+            amounts: resp_map
+        }
     }
 }
 
