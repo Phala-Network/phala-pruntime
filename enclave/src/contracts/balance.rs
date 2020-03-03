@@ -1,8 +1,8 @@
-use crate::std::collections::{BTreeMap};
+use std::collections::{BTreeMap};
 use serde::{de::{self,Visitor}, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
-use crate::std::prelude::v1::*;
-use crate::std::{fmt,vec::Vec};
+use std::prelude::v1::*;
+use std::{fmt,vec::Vec};
 
 use crate::contracts;
 use crate::types::TxRef;
@@ -91,7 +91,7 @@ impl Serialize for AccountIdWrapper{
     }
 }
 
-impl Deserialize for AccountIdWrapper{
+impl<'de> Deserialize<'de> for AccountIdWrapper{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: Deserializer<'de>
     {
