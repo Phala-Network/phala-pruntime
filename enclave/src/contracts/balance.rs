@@ -1,8 +1,10 @@
 use std::collections::{BTreeMap};
 use serde::{de::{self,Visitor}, Serialize, Deserialize, Serializer, Deserializer};
 use core::str::FromStr;
+use core::cmp::Ord;
 use std::prelude::v1::*;
 use std::{fmt,vec::Vec};
+use std::str;
 
 use crate::contracts;
 use crate::types::TxRef;
@@ -71,13 +73,13 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Ord)]
 pub struct AccountIdWrapper( chain::AccountId );
 
 impl<'a> AccountIdWrapper{
     fn from(b: &'a [u8]) -> Self {
         let mut a = AccountIdWrapper::default();
-        a.0.copy_from_slice(b);
+        a.0 = sp_core::crypto::AccountId32::try_from(b).unwrap();
         a
     }
     fn into(&self) -> chain::AccountId {self.0}
@@ -114,7 +116,7 @@ impl<'de> Visitor<'de> for AcidVisitor{
         if v.len() == 32 {
             Ok(AccountIdWrapper::from(v))
         }else {
-            Err(E::custom(format!("AccountId bytes length wrong: {}", v)))
+            Err(E::custom(format!("AccountId bytes length wrong: {}", str::from_utf8(&v).unwrap())))
         }
     }
 }
