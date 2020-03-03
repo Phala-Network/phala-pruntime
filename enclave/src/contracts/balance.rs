@@ -9,7 +9,7 @@ use crate::types::TxRef;
 
 extern crate runtime as chain;
 
-// #[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
     accounts: BTreeMap<chain::AccountId, chain::Balance>,
 }
@@ -83,7 +83,7 @@ fn se_to_str<S>(value: &chain::AccountId, serializer: S) -> Result<S::Ok, S::Err
     where S: Serializer {
     use std::fmt::Write;
     let mut s = String::new();
-    for a in acid.0.iter() {
+    for a in value.0.iter() {
         write!(s,"{:02x}", a)
     }
     String::serialize(&s, serializer)
