@@ -39,8 +39,9 @@ use secp256k1::{SecretKey, PublicKey};
 mod cert;
 mod hex;
 mod light_validation;
-mod ecdh;
-mod aead;
+mod cryptography;
+
+use cryptography::{ecdh, aead};
 
 extern "C" {
     pub fn ocall_sgx_init_quote(
@@ -77,6 +78,7 @@ extern "C" {
 }
 
 type ChainLightValidation = light_validation::LightValidation::<chain::Runtime>;
+type EcdhKey = ring::agreement::EphemeralPrivateKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct RuntimeState {
@@ -91,7 +93,7 @@ struct LocalState {
     public_key: Box<PublicKey>,
     private_key: Box<SecretKey>,
     blocknum: u32,
-    ecdh_private_key: Option<ring::agreement::EphemeralPrivateKey>,
+    ecdh_private_key: Option<EcdhKey>,
     ecdh_public_key: Option<ring::agreement::PublicKey>,
 }
 
@@ -619,14 +621,6 @@ pub extern "C" fn ecall_handle(
 
     let local_state = LOCAL_STATE.lock().unwrap();
 
-//    let nonce = input_value.get("nonce").unwrap().as_object().unwrap();
-//    let nonce_vec = serde_json::to_vec(&nonce).unwrap();
-//    let (attn_report, sig, cert) = create_attestation_report(&nonce_vec).unwrap();
-//    let mut map = serde_json::Map::new();
-//    map.insert("report".to_owned(), json!(attn_report));
-//    map.insert("signature".to_owned(), json!(sig));
-//    map.insert("signing_cert".to_owned(), json!(cert));
-
     let output_json = match result {
         Ok(payload) => {
             let s_payload = payload.to_string();
@@ -639,11 +633,6 @@ pub extern "C" fn ecall_handle(
                 "status": "ok",
                 "payload": s_payload,
                 "signature": hex::encode_hex_compact(signature.serialize().as_ref()),
-//                "attestation": {
-//                    "version": 1,
-//                    "provider": "SGX",
-//                    "payload": map
-//                }
             })
         },
         Err(payload) => {
@@ -657,11 +646,6 @@ pub extern "C" fn ecall_handle(
                 "status": "error",
                 "payload": s_payload,
                 "signature": hex::encode_hex_compact(signature.serialize().as_ref()),
-//                "attestation": {
-//                    "version": 1,
-//                    "provider": "SGX",
-//                    "payload": map
-//                }
             })
         }
     };
@@ -711,12 +695,7 @@ fn test(param: TestReq) -> Result<Value, Value> {
     Ok(json!({}))
 }
 
-// const HARD_CODE_PASS: &[u8] = b"password";
-// const HARD_CODE_IV: &[u8] = b"iv";
 const SECRET: &[u8; 32] = b"24e3e78e1f15150cdbad02f3205f6dd0";
-
-// const SECRET_ALICE: &[u8; 32] = b"00000000000000000000000000000001";
-// const SECRET_BOB: &[u8; 32] = b"00000000000000000000000000000002";
 
 fn dump_states(_input: &Map<String, Value>) -> Result<Value, Value> {
     let sessions = STATE.lock().unwrap();
@@ -993,22 +972,31 @@ const CONTRACT_ONE: u32 = 1;
 
 fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
                     origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
-                    contract_id: u32, payload: &Vec<u8>) {
-    if contract_id != CONTRACT_ONE {
-        println!("handle_executiioin: Skipped unknown contract: {}", contract_id);
-        return
-    }
-    let cmd: contracts::data_plaza::Command = serde_json::from_slice(payload.as_slice()).unwrap();
-    // TODO: handle error ^^
+                    contract_id: u32, payload: &Vec<u8>,
+                    ecdh_privkey: &EcdhKey) {
+    let payload: types::Payload = serde_json::from_slice(payload.as_slice())
+        .expect("Failed to decode payload");
+    let inner_data = match payload {
+        types::Payload::Plain(data) => data.into_bytes(),
+        types::Payload::Cipher(cipher) => {
+            cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed")
+        }
+    };
 
     let addr = &origin.unwrap().0;
     let origin = format_address(&addr);
 
     println!("handle_execution: about to call handle_command");
-    state.contract1.handle_command(&origin, pos, cmd)
+    match contract_id {
+        1 => state.contract1.handle_command(
+            &origin, pos,
+            serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract1 cmd")),
+        2 => println!("Contract 2: cmd = {:?}", inner_data),
+        _ => println!("handle_execution: Skipped unknown contract: {}", contract_id)
+    }
 }
 
-fn dispatch(block: &chain::SignedBlock) {
+fn dispatch(block: &chain::SignedBlock, ecdh_privkey: &EcdhKey) {
     let ref mut state = STATE.lock().unwrap();
     for (i, xt) in block.block.extrinsics.iter().enumerate() {
         if let chain::Call::Execution(chain::ExecutionCall::push_command(contract_id, payload)) = &xt.function {
@@ -1017,7 +1005,7 @@ fn dispatch(block: &chain::SignedBlock) {
                 blocknum: block.block.header.number,
                 index: i as u32
             };
-            handle_execution(state, &pos, xt.signature.clone(), *contract_id, payload);
+            handle_execution(state, &pos, xt.signature.clone(), *contract_id, payload, ecdh_privkey);
         }
         // skip other unknown extrinsics
     }
@@ -1054,7 +1042,8 @@ fn sync_block(input: &Map<String, Value>) -> Result<Value, Value> {
     }
 
     // trigger updates
-    dispatch(&block);
+    let ecdh_privkey = local_state.ecdh_private_key.as_ref().expect("ECDH not initizlied");
+    dispatch(&block, ecdh_privkey);
 
     // move forward
     (*local_state).blocknum = block.block.header.number + 1;
