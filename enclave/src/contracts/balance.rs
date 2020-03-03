@@ -71,7 +71,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     }
 }
 
-#[derive(default)]
+#[derive(Default)]
 pub struct AccountIdWrapper( chain::AccountId );
 
 impl<'a> AccountIdWrapper{
@@ -109,7 +109,7 @@ impl<'de> Visitor<'de> for AcidVisitor{
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-        where E: Error,
+        where E: de::Error,
     {
         if v.len() == 32 {
             Ok(AccountIdWrapper::from(v))
