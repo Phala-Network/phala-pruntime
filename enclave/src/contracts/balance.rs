@@ -52,7 +52,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         match cmd {
             Command::Transfer(details) => {
                 for account in details.accounts.iter() {
-                    self.accounts.insert(account.0, account.1);
+                    self.accounts.insert(account.clone().0, account.1);
                 }
             }
         }
@@ -73,7 +73,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     }
 }
 
-#[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Copy)]
+#[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct AccountIdWrapper( chain::AccountId );
 
 impl<'a> AccountIdWrapper{

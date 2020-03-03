@@ -1084,7 +1084,7 @@ fn query(input: &Map<String, Value>) -> Result<Value, Value> {
 
     let req_value = input.get("request").ok_or(err.clone())?.clone();
     let contract_id_value = input.get("contract_id").ok_or(err.clone())?.clone();
-    let contract_id: ContractId = serde_json::from_value(contract_id_value).map_err(|_| err)?;
+    let contract_id: ContractId = serde_json::from_value(contract_id_value).map_err(|_| err.clone())?;
 
     match contract_id {
         DATA_PLAZA => {
