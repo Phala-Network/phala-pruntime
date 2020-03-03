@@ -131,4 +131,4 @@ fn str_to_acid(s: String) -> Result<chain::AccountId,()>{
     let b = s.as_bytes();
     sp_core::crypto::AccountId32::try_from(b)
 }
-
+*/
