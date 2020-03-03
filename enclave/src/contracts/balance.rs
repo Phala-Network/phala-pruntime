@@ -73,7 +73,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     }
 }
 
-#[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Copy)]
 pub struct AccountIdWrapper( chain::AccountId );
 
 impl<'a> AccountIdWrapper{
@@ -83,7 +83,7 @@ impl<'a> AccountIdWrapper{
         a.0 = sp_core::crypto::AccountId32::try_from(b).unwrap();
         a
     }
-    fn into(&self) -> chain::AccountId {self.0}
+    fn into(self) -> chain::AccountId {self.0}
 }
 
 impl Serialize for AccountIdWrapper{
