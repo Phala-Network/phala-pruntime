@@ -73,7 +73,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     }
 }
 
-#[derive(Default, Debug, Ord)]
+#[derive(Default, Debug, Ord, Eq)]
 pub struct AccountIdWrapper( chain::AccountId );
 
 impl<'a> AccountIdWrapper{
