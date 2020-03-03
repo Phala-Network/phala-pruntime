@@ -16,6 +16,7 @@ pub struct AccountIdDef{
     id: [u8; 32]
 }
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
     accounts: BTreeMap<chain::AccountId, chain::Balance>,
 }
@@ -85,6 +86,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         }
     }
 }
+
 /*
 fn map_to_str<S>(value: BTreeMap<chain::AccountId,chain::Balance>, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer {
