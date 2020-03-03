@@ -9,14 +9,7 @@ use crate::types::TxRef;
 
 extern crate runtime as chain;
 
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "chain::AccountId")]
-pub struct AccountIdDef{
-    #[serde(getter = "chain::AccountId::as_ref")]
-    id: [u8; 32]
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+// #[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
     accounts: BTreeMap<chain::AccountId, chain::Balance>,
 }
@@ -28,24 +21,23 @@ pub enum Command{
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TransferDetails{
-    //#[serde(serialize_with = "map_to_str", deserialize_with = "map_from_str")]
     accounts: Vec<Account>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request{
+    #[serde(serialize_with = "se_to_str", deserialize_with = "de_from_str")]
     account: chain::AccountId,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Response{
-    //#[serde(serialize_with = "map_to_str", deserialize_with = "map_from_str")]
     balance: chain::Balance,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Account{
-    #[serde(with = "AccountIdDef")]
+    #[serde(serialize_with = "se_to_str", deserialize_with = "de_from_str")]
     account_id: chain::AccountId,
 
     balance: chain::Balance,
@@ -76,7 +68,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         // todo: should validate user id first.
 
 
-        let mut balance = ();
+        let mut balance: chain::Balance = ();
         if let Some(ba) = self.accounts.get(&req.account) {
             balance = *ba;
         }
@@ -85,6 +77,22 @@ impl contracts::Contract<Command, Request, Response> for Balance{
             balance,
         }
     }
+}
+
+fn se_to_str<S>(value: &chain::AccountId, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+    use std::fmt::Write;
+    let mut s = String::new();
+    for a in acid.0.iter() {
+        write!(s,"{:02x}", a)
+    }
+    String::serialize(&s, serializer)
+}
+
+fn de_from_str<'de, D>(deserializer: D) -> Result<chain::Balance, D::Error>
+    where D: Deserializer<'de> {
+    let s = String::deserialize(deserializer)?;
+    chain::AccountId::from_str(&s).map_err(de::Error::custom)
 }
 
 /*
