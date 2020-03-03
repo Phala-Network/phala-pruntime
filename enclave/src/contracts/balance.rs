@@ -79,6 +79,7 @@ pub struct AccountIdWrapper( chain::AccountId );
 impl<'a> AccountIdWrapper{
     fn from(b: &'a [u8]) -> Self {
         let mut a = AccountIdWrapper::default();
+        use core::convert::TryFrom;
         a.0 = sp_core::crypto::AccountId32::try_from(b).unwrap();
         a
     }
@@ -89,7 +90,7 @@ impl Serialize for AccountIdWrapper{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer,
     {
-        serializer.serialize_bytes(&sp_core::crypto::AccountId32::from(self.0))
+        serializer.serialize_bytes(self.0.as_ref())
     }
 }
 
