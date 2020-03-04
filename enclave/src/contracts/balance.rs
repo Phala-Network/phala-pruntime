@@ -36,7 +36,12 @@ pub struct FreeBalanceReq{
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Response{
+pub enum Response{
+    FreeBalance(FreeBalanceResp),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FreeBalanceResp{
     balance: chain::Balance,
 }
 
@@ -62,17 +67,14 @@ impl contracts::Contract<Command, Request, Response> for Balance{
     fn handle_query(&mut self, req: Request) -> Response{
         // todo: should validate user id first.
 
-        let mut balance: chain::Balance = 0;
         match req {
             Request::FreeBalance(fbreq) => {
+                let mut balance: chain::Balance = 0;
                 if let Some(ba) = self.accounts.get(&fbreq.account) {
                     balance = *ba;
                 }
-            }
-        }
-
-        Response{
-            balance,
+                Response::FreeBalance(FreeBalanceResp{ balance,})
+            },
         }
     }
 }
