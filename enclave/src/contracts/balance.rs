@@ -1,9 +1,7 @@
 use std::collections::{BTreeMap};
 use serde::{de::{self,Visitor}, Serialize, Deserialize, Serializer, Deserializer};
-use core::str::FromStr;
+use core::str;
 use core::cmp::Ord;
-use crate::std::{fmt,vec::Vec};
-use crate::std::str;
 
 use crate::contracts;
 use crate::types::TxRef;
@@ -20,7 +18,7 @@ pub enum Command{
     Transfer(TransferDetails),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransferDetails{
     target: AccountIdWrapper,
     amount: chain::Balance,
