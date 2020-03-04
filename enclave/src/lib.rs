@@ -83,6 +83,7 @@ type EcdhKey = ring::agreement::EphemeralPrivateKey;
 #[derive(Serialize, Deserialize, Debug)]
 struct RuntimeState {
     contract1: contracts::data_plaza::DataPlaza,
+    contract2: contracts::balance::Balance,
     #[serde(serialize_with = "se_to_b64", deserialize_with = "de_from_b64")]
     light_client: ChainLightValidation,
     main_bridge: u64
@@ -115,6 +116,7 @@ lazy_static! {
     static ref STATE: SgxMutex<RuntimeState> = {
         SgxMutex::new(RuntimeState {
             contract1: contracts::data_plaza::DataPlaza::new(),
+            contract2: contracts::balance::Balance::new(),
             light_client: ChainLightValidation::new(),
             main_bridge: 0
         })
@@ -836,7 +838,7 @@ mod contracts;
 mod types;
 
 use types::TxRef;
-use contracts::Contract;
+use contracts::{Contract, ContractId, DATA_PLAZA, BALANCE};
 
 extern crate runtime as chain;
 
@@ -968,11 +970,9 @@ fn test_ecdh(params: TestEcdhParam) {
     }
 }
 
-const CONTRACT_ONE: u32 = 1;
-
 fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
                     origin: Option<(chain::Address, chain::Signature, chain::SignedExtra)>,
-                    contract_id: u32, payload: &Vec<u8>,
+                    contract_id: ContractId, payload: &Vec<u8>,
                     ecdh_privkey: &EcdhKey) {
     let payload: types::Payload = serde_json::from_slice(payload.as_slice())
         .expect("Failed to decode payload");
@@ -988,10 +988,14 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
 
     println!("handle_execution: about to call handle_command");
     match contract_id {
-        1 => state.contract1.handle_command(
+        DATA_PLAZA => state.contract1.handle_command(
             &origin, pos,
-            serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract1 cmd")),
-        2 => println!("Contract 2: cmd = {:?}", inner_data),
+            serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract1 cmd")
+        ),
+        BALANCE => state.contract2.handle_command(
+            &origin, pos,
+            serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract2 cmd")
+        ),
         _ => println!("handle_execution: Skipped unknown contract: {}", contract_id)
     }
 }
@@ -1079,11 +1083,24 @@ fn query(input: &Map<String, Value>) -> Result<Value, Value> {
     let err = error_msg("Malformed request");
 
     let req_value = input.get("request").ok_or(err.clone())?.clone();
-    let req: contracts::data_plaza::Request = serde_json::from_value(req_value).map_err(|_| err)?;
-    let res = state.contract1.handle_query(req);
-    let res_value = serde_json::to_value(res).unwrap();
+    let contract_id_value = input.get("contract_id").ok_or(err.clone())?.clone();
+    let contract_id: ContractId = serde_json::from_value(contract_id_value).map_err(|_| err.clone())?;
 
-    Ok(res_value)
+    match contract_id {
+        DATA_PLAZA => {
+            let req: contracts::data_plaza::Request = serde_json::from_value(req_value).map_err(|_| err)?;
+            let res = state.contract1.handle_query(req);
+            let res_value = serde_json::to_value(res).unwrap();
+            Ok(res_value)
+        },
+        BALANCE => {
+            let req: contracts::balance::Request = serde_json::from_value(req_value).map_err(|_| err)?;
+            let res = state.contract2.handle_query(req);
+            let res_value = serde_json::to_value(res).unwrap();
+            Ok(res_value)
+        },
+        _ => Err(Value::Null)
+    }
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
