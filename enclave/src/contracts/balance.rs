@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap};
 use serde::{de::{self,Visitor}, Serialize, Deserialize, Serializer, Deserializer};
-use core::str;
+use crate::std::string::String;
+use core::{fmt,str};
 use core::cmp::Ord;
 
 use crate::contracts;
