@@ -606,6 +606,7 @@ pub extern "C" fn ecall_handle(
     let result = match action {
         ACTION_INIT_RUNTIME => init_runtime(load_param(input_value)),
         ACTION_TEST =>  test(load_param(input_value)),
+        ACTION_QUERY => query(load_param(input_value)),
         _ => {
             let payload = input_value.as_object().unwrap();
             match action {
@@ -613,7 +614,6 @@ pub extern "C" fn ecall_handle(
                 ACTION_DUMP_STATES => dump_states(payload),
                 ACTION_LOAD_STATES => load_states(payload),
                 ACTION_SYNC_BLOCK => sync_block(payload),
-                ACTION_QUERY => query(payload),
                 ACTION_GET => get(payload),
                 ACTION_SET => set(payload),
                 _ => unknown()
@@ -1077,30 +1077,36 @@ fn get_info(_input: &Map<String, Value>) -> Result<Value, Value> {
     }))
 }
 
-fn query(input: &Map<String, Value>) -> Result<Value, Value> {
+fn query(q: types::SignedQuery) -> Result<Value, Value> {
+    let msg = q.query.as_bytes();
+    if let Some(origin) = q.origin {
+        if !origin.verify(msg).map_err(|_| error_msg("Bad signature or origin"))? {
+            return Err(error_msg("Verifying signature failed"));
+        }
+        println!("Verifying signature passed!");
+    }
+    
     let mut state = STATE.lock().unwrap();
 
-    let err = error_msg("Malformed request");
+    let opaque_query: types::OpaqueQuery = serde_json::from_slice(msg)
+        .map_err(|_| error_msg("Malformed request"))?;
+    
+    let res = match opaque_query.contract_id {
+        DATA_PLAZA => serde_json::to_value(
+            state.contract1.handle_query(
+                types::deopaque_query(opaque_query)
+                .map_err(|_| error_msg("Malformed request"))?.request)
+            ).unwrap(),
+        BALANCE => serde_json::to_value(
+            state.contract2.handle_query(
+                types::deopaque_query(opaque_query)
+                .map_err(|_| error_msg("Malformed request"))?.request)
+            ).unwrap(),
+        _ => return Err(Value::Null)
+    };
 
-    let req_value = input.get("request").ok_or(err.clone())?.clone();
-    let contract_id_value = input.get("contract_id").ok_or(err.clone())?.clone();
-    let contract_id: ContractId = serde_json::from_value(contract_id_value).map_err(|_| err.clone())?;
-
-    match contract_id {
-        DATA_PLAZA => {
-            let req: contracts::data_plaza::Request = serde_json::from_value(req_value).map_err(|_| err)?;
-            let res = state.contract1.handle_query(req);
-            let res_value = serde_json::to_value(res).unwrap();
-            Ok(res_value)
-        },
-        BALANCE => {
-            let req: contracts::balance::Request = serde_json::from_value(req_value).map_err(|_| err)?;
-            let res = state.contract2.handle_query(req);
-            let res_value = serde_json::to_value(res).unwrap();
-            Ok(res_value)
-        },
-        _ => Err(Value::Null)
-    }
+    let res_value = serde_json::to_value(res).unwrap();
+    Ok(res_value)
 }
 
 fn get(input: &Map<String, Value>) -> Result<Value, Value> {
