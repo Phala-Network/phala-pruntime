@@ -262,7 +262,7 @@ impl DataPlaza {
 }
 
 impl contracts::Contract<Command, Request, Response> for DataPlaza {
-  fn id(&self) -> contracts::ContractId { contracts::DATA_PLAZA }
+  fn id(&self) -> contracts::ContractId { 1 }
 
   fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command) {
     match cmd {
@@ -271,7 +271,7 @@ impl contracts::Contract<Command, Request, Response> for DataPlaza {
           id: self.items.len() as ItemId,
           txref: txref.clone(),
           seller: origin.clone(),
-          details,
+          details: details,
         })
       },
       Command::OpenOrder(details) => {
@@ -279,7 +279,7 @@ impl contracts::Contract<Command, Request, Response> for DataPlaza {
           id: self.orders.len() as OrderId,
           txref: txref.clone(),
           buyer: origin.clone(),
-          details,
+          details: details,
           state: OrderState {  // TODO
             data_ready: false,
             query_ready: false,
