@@ -37,7 +37,7 @@ pub struct ItemDetails {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum PricePolicy {
   PerRow {
-    #[serde(serialize_with = "se_to_str", deserialize_with = "de_from_str")]
+    #[serde(with = "super::serde_balance")]
     price: chain::Balance
   },
 }
@@ -67,20 +67,6 @@ pub struct OrderState {
   result_ready: bool,
   matched_rows: u32,
   result_path: String,
-}
-
-// deesr
-
-fn se_to_str<S>(value: &chain::Balance, serializer: S) -> Result<S::Ok, S::Error>
-where S: Serializer {
-  let s = value.to_string();
-  String::serialize(&s, serializer)
-}
-
-fn de_from_str<'de, D>(deserializer: D) -> Result<chain::Balance, D::Error>
-where D: Deserializer<'de> {
-    let s = String::deserialize(deserializer)?;
-    chain::Balance::from_str(&s).map_err(de::Error::custom)
 }
 
 // contract

@@ -986,6 +986,8 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
     let addr = &origin.unwrap().0;
     let origin = format_address(&addr);
 
+    println!("handle_execution: incominng cmd: {}", String::from_utf8_lossy(&inner_data));
+
     println!("handle_execution: about to call handle_command");
     match contract_id {
         DATA_PLAZA => state.contract1.handle_command(
