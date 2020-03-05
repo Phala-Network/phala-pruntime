@@ -9,7 +9,7 @@ use crate::types::TxRef;
 
 extern crate runtime as chain;
 
-const ALICE: &'static [u8] = b"d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+const ALICE: &'static str = "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
@@ -41,8 +41,8 @@ pub enum Response {
 impl Balance{
     pub fn new() -> Self{
         let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
-        accounts.insert(AccountIdWrapper::from(ALICE), 102_400_000_000_000_000);
-        Balance{ accounts }
+        accounts.insert(AccountIdWrapper::from_hex(ALICE), 102_400_000_000_000_000);
+        Balance { accounts }
     }
 }
 
@@ -92,7 +92,10 @@ impl<'a> AccountIdWrapper{
         a.0 = sp_core::crypto::AccountId32::try_from(b).unwrap();
         a
     }
-    fn into(self) -> chain::AccountId {self.0}
+    fn from_hex(s: &str) -> Self {
+        let bytes = crate::hex::decode_hex(s);  // TODO: error handling
+        AccountIdWrapper::from(&bytes)
+    }
 }
 
 impl Serialize for AccountIdWrapper{
