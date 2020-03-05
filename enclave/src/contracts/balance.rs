@@ -41,7 +41,7 @@ pub enum Response {
 impl Balance{
     pub fn new() -> Self{
         let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
-        accounts.insert(AccountIdWrapper::from(ALICE), 1024 * 10^14);
+        accounts.insert(AccountIdWrapper::from(ALICE), 102_400_000_000_000_000);
         Balance{ accounts }
     }
 }
@@ -58,7 +58,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
                         *orgin_amount -= value;
                         if let Some(dest_amount) = self.accounts.get_mut(&dest) {
                             *dest_amount += value;
-                        }else {
+                        } else {
                             self.accounts.insert(dest, value);
                         }
                     }
