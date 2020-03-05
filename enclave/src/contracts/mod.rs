@@ -19,7 +19,7 @@ where
   QResp: Serialize + DeserializeOwned + Debug
 {
   fn id(&self) -> ContractId;
-  fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Cmd);
+  fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Cmd);
   fn handle_query(&mut self, req: QReq) -> QResp;
 }
 

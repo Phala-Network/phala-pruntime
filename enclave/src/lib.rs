@@ -982,9 +982,12 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
             cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed")
         }
     };
-
-    let addr = &origin.unwrap().0;
-    let origin = format_address(&addr);
+    
+    let origin = if let Some((chain::Address::Id(account_id), _, _)) = origin {
+        account_id
+    } else {
+        panic!("No account id found for tx {:?}", pos);
+    };
 
     println!("handle_execution: incominng cmd: {}", String::from_utf8_lossy(&inner_data));
 

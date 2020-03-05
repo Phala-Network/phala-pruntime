@@ -49,18 +49,26 @@ impl Balance{
 impl contracts::Contract<Command, Request, Response> for Balance{
     fn id(&self) -> contracts::ContractId { contracts::BALANCE }
 
-    fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command){
+    fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Command){
         match cmd {
-            Command::Transfer {dest, mut value} => {
-                let origin = AccountIdWrapper::from(origin.as_bytes());
-                if let Some(orgin_amount) = self.accounts.get_mut(&origin){
-                    if orgin_amount >= &mut value {
-                        *orgin_amount -= value;
+            Command::Transfer {dest, value} => {
+                let o = AccountIdWrapper(origin.clone());
+                println!("Transfer: [{}] -> [{}]: {}", o.to_string(), dest.to_string(), value);
+                if let Some(src_amount) = self.accounts.get_mut(&o){
+                    if *src_amount >= value {
+                        let src0 = *src_amount;
+                        let mut dest0 = 0;
+
+                        *src_amount -= value;
                         if let Some(dest_amount) = self.accounts.get_mut(&dest) {
+                            dest0 = *dest_amount;
                             *dest_amount += value;
                         } else {
                             self.accounts.insert(dest, value);
                         }
+
+                        println!("   src: {:>20} -> {:>20}", src0, src0 - value);
+                        println!("  dest: {:>20} -> {:>20}", dest0, dest0 + value);
                     }
                 }
             }
@@ -96,13 +104,16 @@ impl<'a> AccountIdWrapper{
         let bytes = crate::hex::decode_hex(s);  // TODO: error handling
         AccountIdWrapper::from(&bytes)
     }
+    fn to_string(&self) -> String {
+        crate::hex::encode_hex_compact(self.0.as_ref())
+    }
 }
 
 impl Serialize for AccountIdWrapper{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer,
     {
-        let data_hex = crate::hex::encode_hex_compact(self.0.as_ref());
+        let data_hex = self.to_string();
         serializer.serialize_str(&data_hex)
     }
 }

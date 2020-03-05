@@ -6,8 +6,6 @@ use core::str::FromStr;
 
 use csv_core::{Reader, ReadRecordResult};
 
-extern crate runtime as chain;
-
 use crate::contracts;
 use crate::types::TxRef;
 
@@ -250,13 +248,14 @@ impl DataPlaza {
 impl contracts::Contract<Command, Request, Response> for DataPlaza {
   fn id(&self) -> contracts::ContractId { contracts::DATA_PLAZA }
 
-  fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command) {
+  fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Command) {
+    let address_hex = crate::hex::encode_hex_compact(origin.as_ref());
     match cmd {
       Command::List(details) => {
         self.items.push(Item {
           id: self.items.len() as ItemId,
           txref: txref.clone(),
-          seller: origin.clone(),
+          seller: address_hex,
           details,
         })
       },
@@ -264,7 +263,7 @@ impl contracts::Contract<Command, Request, Response> for DataPlaza {
         self.orders.push(Order {
           id: self.orders.len() as OrderId,
           txref: txref.clone(),
-          buyer: origin.clone(),
+          buyer: address_hex,
           details,
           state: OrderState {  // TODO
             data_ready: false,
