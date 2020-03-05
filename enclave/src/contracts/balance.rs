@@ -64,9 +64,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
                 if let Some(ba) = self.accounts.get(&account) {
                     balance = *ba;
                 }
-                Response::FreeBalance{
-                    balance: balance
-                }
+                Response::FreeBalance { balance }
             },
         }
     }
