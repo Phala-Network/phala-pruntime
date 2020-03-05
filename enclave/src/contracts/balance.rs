@@ -15,34 +15,25 @@ pub struct Balance{
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Command{
-    Transfer(TransferDetails),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TransferDetails{
-    target: AccountIdWrapper,
-    amount: chain::Balance,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Request{
-    FreeBalance(FreeBalanceReq),
+pub enum Command {
+    Transfer {
+        dest: AccountIdWrapper,
+        #[serde(with = "super::serde_balance")]
+        value: chain::Balance,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct FreeBalanceReq{
-    account: AccountIdWrapper,
+pub enum Request {
+    FreeBalance {
+        account: AccountIdWrapper
+    },
 }
-
 #[derive(Serialize, Deserialize, Debug)]
-pub enum Response{
-    FreeBalance(FreeBalanceResp),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FreeBalanceResp{
-    balance: chain::Balance,
+pub enum Response {
+    FreeBalance {
+        balance: chain::Balance
+    },
 }
 
 impl Balance{
@@ -58,8 +49,8 @@ impl contracts::Contract<Command, Request, Response> for Balance{
 
     fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command){
         match cmd {
-            Command::Transfer(detail) => {
-                self.accounts.insert(detail.clone().target, detail.amount);
+            Command::Transfer {dest, value} => {
+                self.accounts.insert(dest, value);
             }
         }
     }
@@ -68,12 +59,12 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         // todo: should validate user id first.
 
         match req {
-            Request::FreeBalance(fbreq) => {
+            Request::FreeBalance {account} => {
                 let mut balance: chain::Balance = 0;
-                if let Some(ba) = self.accounts.get(&fbreq.account) {
+                if let Some(ba) = self.accounts.get(&account) {
                     balance = *ba;
                 }
-                Response::FreeBalance(FreeBalanceResp{ balance,})
+                Response::FreeBalance { balance }
             },
         }
     }
@@ -96,7 +87,8 @@ impl Serialize for AccountIdWrapper{
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer,
     {
-        serializer.serialize_bytes(self.0.as_ref())
+        let data_hex = crate::hex::encode_hex_compact(self.0.as_ref());
+        serializer.serialize_str(&data_hex)
     }
 }
 
@@ -120,10 +112,12 @@ impl<'de> Visitor<'de> for AcidVisitor{
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
         where E: de::Error,
     {
-        if v.len() == 32 {
-            Ok(AccountIdWrapper::from(v))
+        let value_str = str::from_utf8(&v).map_err(|_| E::custom("Invalid utf8 string"))?;
+        if v.len() == 64 {
+            let bytes = crate::hex::decode_hex(value_str);  // TODO: error handling
+            Ok(AccountIdWrapper::from(&bytes))
         } else {
-            Err(E::custom(format!("AccountId bytes length wrong: {}", str::from_utf8(&v).unwrap())))
+            Err(E::custom(format!("AccountId bytes length wrong: {}", value_str)))
         }
     }
 }
