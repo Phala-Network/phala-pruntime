@@ -9,6 +9,8 @@ use crate::types::TxRef;
 
 extern crate runtime as chain;
 
+const ALICE: &'static [u8] = b"d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Balance{
     accounts: BTreeMap<AccountIdWrapper, chain::Balance>,
@@ -38,9 +40,9 @@ pub enum Response {
 
 impl Balance{
     pub fn new() -> Self{
-        Balance{
-            accounts: BTreeMap::<AccountIdWrapper, chain::Balance>::new(),
-        }
+        let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
+        accounts.insert(AccountIdWrapper::from(ALICE), 1024 * 10^14);
+        Balance{ accounts }
     }
 }
 
@@ -49,8 +51,18 @@ impl contracts::Contract<Command, Request, Response> for Balance{
 
     fn handle_command(&mut self, origin: &String, txref: &TxRef, cmd: Command){
         match cmd {
-            Command::Transfer {dest, value} => {
-                self.accounts.insert(dest, value);
+            Command::Transfer {dest, mut value} => {
+                let origin = AccountIdWrapper::from(origin.as_bytes());
+                if let Some(orgin_amount) = self.accounts.get_mut(&origin){
+                    if orgin_amount >= &mut value {
+                        *orgin_amount -= value;
+                        if let Some(dest_amount) = self.accounts.get_mut(&dest) {
+                            *dest_amount += value;
+                        }else {
+                            self.accounts.insert(dest, value);
+                        }
+                    }
+                }
             }
         }
     }
