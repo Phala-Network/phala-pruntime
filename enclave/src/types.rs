@@ -22,7 +22,7 @@ pub enum Payload {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SignedQuery {
-  pub query: String,
+  pub query_payload: String,
   pub origin: Option<Origin>
 }
 

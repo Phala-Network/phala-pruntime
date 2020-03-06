@@ -26,7 +26,7 @@ pub fn decrypt(cipher: &AeadCipher, privkey: &ring::agreement::EphemeralPrivateK
       .map_err(|_| Error::BadInput("iv_b64"))?;
   // ECDH derived secret
   let secret = ecdh::agree(privkey, &pubkey);
-  println!("Agreed SK: {:?}", secret);
+  println!("Agreed SK: {:?}", crate::hex::encode_hex_compact(&secret));
   let msg = aead::decrypt(iv.as_slice(), secret.as_slice(), &mut data);
   Ok(msg.to_vec())
 }

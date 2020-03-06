@@ -1083,33 +1083,47 @@ fn get_info(_input: &Map<String, Value>) -> Result<Value, Value> {
 }
 
 fn query(q: types::SignedQuery) -> Result<Value, Value> {
-    let msg = q.query.as_bytes();
+    let payload_data = q.query_payload.as_bytes();
+    // Validate signature
     if let Some(origin) = q.origin {
-        if !origin.verify(msg).map_err(|_| error_msg("Bad signature or origin"))? {
+        if !origin.verify(payload_data).map_err(|_| error_msg("Bad signature or origin"))? {
             return Err(error_msg("Verifying signature failed"));
         }
         println!("Verifying signature passed!");
     }
-    
-    let mut state = STATE.lock().unwrap();
+    // Load and decrypt if necessary
+    let msg = {
+        let local_state = LOCAL_STATE.lock().unwrap();
+        let ecdh_privkey = local_state.ecdh_private_key.as_ref().expect("ECDH not initizlied");
 
-    let opaque_query: types::OpaqueQuery = serde_json::from_slice(msg)
-        .map_err(|_| error_msg("Malformed request"))?;
-    
+        let payload: types::Payload = serde_json::from_slice(payload_data)
+            .expect("Failed to decode payload");
+        match payload {
+            types::Payload::Plain(data) => data.into_bytes(),
+            types::Payload::Cipher(cipher) => {
+                println!("cipher: {:?}", cipher);
+                cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed")
+            }
+        }
+    };
+    println!("msg: {}", String::from_utf8_lossy(&msg));
+    let opaque_query: types::OpaqueQuery = serde_json::from_slice(&msg)
+        .map_err(|_| error_msg("Malformed request (Query)"))?;
+    // Dispatch
+    let mut state = STATE.lock().unwrap();
     let res = match opaque_query.contract_id {
         DATA_PLAZA => serde_json::to_value(
             state.contract1.handle_query(
                 types::deopaque_query(opaque_query)
-                .map_err(|_| error_msg("Malformed request"))?.request)
+                .map_err(|_| error_msg("Malformed request (data_plaza::Request)"))?.request)
             ).unwrap(),
         BALANCE => serde_json::to_value(
             state.contract2.handle_query(
                 types::deopaque_query(opaque_query)
-                .map_err(|_| error_msg("Malformed request"))?.request)
+                .map_err(|_| error_msg("Malformed request (balace::Request)"))?.request)
             ).unwrap(),
         _ => return Err(Value::Null)
     };
-
     let res_value = serde_json::to_value(res).unwrap();
     Ok(res_value)
 }

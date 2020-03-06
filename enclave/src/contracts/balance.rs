@@ -12,7 +12,7 @@ extern crate runtime as chain;
 const ALICE: &'static str = "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Balance{
+pub struct Balance {
     accounts: BTreeMap<AccountIdWrapper, chain::Balance>,
 }
 
@@ -34,11 +34,12 @@ pub enum Request {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Response {
     FreeBalance {
+        #[serde(with = "super::serde_balance")]
         balance: chain::Balance
     },
 }
 
-impl Balance{
+impl Balance {
     pub fn new() -> Self{
         let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
         accounts.insert(AccountIdWrapper::from_hex(ALICE), 102_400_000_000_000_000);
@@ -46,15 +47,15 @@ impl Balance{
     }
 }
 
-impl contracts::Contract<Command, Request, Response> for Balance{
+impl contracts::Contract<Command, Request, Response> for Balance {
     fn id(&self) -> contracts::ContractId { contracts::BALANCE }
 
-    fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Command){
+    fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Command) {
         match cmd {
             Command::Transfer {dest, value} => {
                 let o = AccountIdWrapper(origin.clone());
                 println!("Transfer: [{}] -> [{}]: {}", o.to_string(), dest.to_string(), value);
-                if let Some(src_amount) = self.accounts.get_mut(&o){
+                if let Some(src_amount) = self.accounts.get_mut(&o) {
                     if *src_amount >= value {
                         let src0 = *src_amount;
                         let mut dest0 = 0;
@@ -75,7 +76,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
         }
     }
 
-    fn handle_query(&mut self, req: Request) -> Response{
+    fn handle_query(&mut self, req: Request) -> Response {
         // todo: should validate user id first.
 
         match req {
@@ -93,7 +94,7 @@ impl contracts::Contract<Command, Request, Response> for Balance{
 #[derive(Default, Debug, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub struct AccountIdWrapper( chain::AccountId );
 
-impl<'a> AccountIdWrapper{
+impl<'a> AccountIdWrapper {
     fn from(b: &'a [u8]) -> Self {
         let mut a = AccountIdWrapper::default();
         use core::convert::TryFrom;
@@ -109,7 +110,7 @@ impl<'a> AccountIdWrapper{
     }
 }
 
-impl Serialize for AccountIdWrapper{
+impl Serialize for AccountIdWrapper {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer,
     {
@@ -122,28 +123,27 @@ impl<'de> Deserialize<'de> for AccountIdWrapper{
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where D: Deserializer<'de>
     {
-        deserializer.deserialize_bytes(AcidVisitor)
+        deserializer.deserialize_str(AcidVisitor)
     }
 }
 
 struct AcidVisitor;
 
-impl<'de> Visitor<'de> for AcidVisitor{
+impl<'de> Visitor<'de> for AcidVisitor {
     type Value = AccountIdWrapper;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("AccountID is [u8;32]")
+        formatter.write_str("AccountID is the hex of [u8;32]")
     }
 
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where E: de::Error,
     {
-        let value_str = str::from_utf8(&v).map_err(|_| E::custom("Invalid utf8 string"))?;
         if v.len() == 64 {
-            let bytes = crate::hex::decode_hex(value_str);  // TODO: error handling
+            let bytes = crate::hex::decode_hex(v);  // TODO: error handling
             Ok(AccountIdWrapper::from(&bytes))
         } else {
-            Err(E::custom(format!("AccountId bytes length wrong: {}", value_str)))
+            Err(E::custom(format!("AccountId hex length wrong: {}", v)))
         }
     }
 }
