@@ -979,7 +979,7 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
     let inner_data = match payload {
         types::Payload::Plain(data) => data.into_bytes(),
         types::Payload::Cipher(cipher) => {
-            cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed")
+            cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed").msg
         }
     };
     
@@ -1092,18 +1092,18 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
         println!("Verifying signature passed!");
     }
     // Load and decrypt if necessary
-    let msg = {
+    let payload: types::Payload = serde_json::from_slice(payload_data)
+        .expect("Failed to decode payload");
+    let (msg, secret, pubkey) = {
         let local_state = LOCAL_STATE.lock().unwrap();
         let ecdh_privkey = local_state.ecdh_private_key.as_ref().expect("ECDH not initizlied");
-
-        let payload: types::Payload = serde_json::from_slice(payload_data)
-            .expect("Failed to decode payload");
         match payload {
-            types::Payload::Plain(data) => data.into_bytes(),
+            types::Payload::Plain(data) => (data.into_bytes(), None, None),
             types::Payload::Cipher(cipher) => {
                 println!("cipher: {:?}", cipher);
-                cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed")
-            }
+                let result = cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed");
+                (result.msg, Some(result.secret), local_state.ecdh_public_key.clone())
+            }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
         }
     };
     println!("msg: {}", String::from_utf8_lossy(&msg));
@@ -1124,7 +1124,22 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
             ).unwrap(),
         _ => return Err(Value::Null)
     };
-    let res_value = serde_json::to_value(res).unwrap();
+    // Encrypt response if necessary
+    let res_json = res.to_string();
+    let res_payload = if let (Some(sk), Some(pk)) = (secret, pubkey) {
+        let iv = aead::generate_iv();
+        let mut msg = res_json.as_bytes().to_vec();
+        aead::encrypt(&iv, &sk, &mut msg);
+        types::Payload::Cipher(cryptography::AeadCipher {
+            iv_b64: base64::encode(&iv),
+            cipher_b64: base64::encode(&msg),
+            pubkey_b64: base64::encode(&pk),
+        })
+    } else {
+        types::Payload::Plain(res_json)
+    };
+
+    let res_value = serde_json::to_value(res_payload).unwrap();
     Ok(res_value)
 }
 
