@@ -20,7 +20,13 @@ where
 {
   fn id(&self) -> ContractId;
   fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Cmd);
-  fn handle_query(&mut self, req: QReq) -> QResp;
+  fn handle_query(&mut self, origin: Option<&chain::AccountId>, req: QReq) -> QResp;
+}
+
+pub fn account_id_from_hex(accid_hex: &String) -> Result<chain::AccountId, ()> {
+  use core::convert::TryFrom;
+  let bytes = crate::hex::decode_hex(accid_hex);
+  chain::AccountId::try_from(bytes.as_slice())
 }
 
 pub mod serde_balance {

@@ -277,7 +277,7 @@ impl contracts::Contract<Command, Request, Response> for DataPlaza {
     }
   }
 
-  fn handle_query(&mut self, req: Request) -> Response {
+  fn handle_query(&mut self, _origin: Option<&chain::AccountId>, req: Request) -> Response {
     match req {
       Request::GetItems => Response::GetItems { items: self.items.clone() },
       Request::GetOrders => {

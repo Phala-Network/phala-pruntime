@@ -1085,7 +1085,7 @@ fn get_info(_input: &Map<String, Value>) -> Result<Value, Value> {
 fn query(q: types::SignedQuery) -> Result<Value, Value> {
     let payload_data = q.query_payload.as_bytes();
     // Validate signature
-    if let Some(origin) = q.origin {
+    if let Some(origin) = &q.origin {
         if !origin.verify(payload_data).map_err(|_| error_msg("Bad signature or origin"))? {
             return Err(error_msg("Verifying signature failed"));
         }
@@ -1109,16 +1109,27 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
     println!("msg: {}", String::from_utf8_lossy(&msg));
     let opaque_query: types::OpaqueQuery = serde_json::from_slice(&msg)
         .map_err(|_| error_msg("Malformed request (Query)"))?;
+    // Origin
+    let accid_origin = match q.origin.as_ref() {
+        Some(o) => {
+            let accid = contracts::account_id_from_hex(&o.origin)
+                .map_err(|_| error_msg("Bad origin"))?;
+            Some(accid)
+        },
+        None => None
+    };
     // Dispatch
     let mut state = STATE.lock().unwrap();
     let res = match opaque_query.contract_id {
         DATA_PLAZA => serde_json::to_value(
             state.contract1.handle_query(
+                accid_origin.as_ref(),
                 types::deopaque_query(opaque_query)
                 .map_err(|_| error_msg("Malformed request (data_plaza::Request)"))?.request)
             ).unwrap(),
         BALANCE => serde_json::to_value(
             state.contract2.handle_query(
+                accid_origin.as_ref(),
                 types::deopaque_query(opaque_query)
                 .map_err(|_| error_msg("Malformed request (balace::Request)"))?.request)
             ).unwrap(),

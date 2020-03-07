@@ -17,6 +17,12 @@ pub struct Balance {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum Error {
+    NotAuthorized,
+    Other(String),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Command {
     Transfer {
         dest: AccountIdWrapper,
@@ -37,12 +43,13 @@ pub enum Response {
         #[serde(with = "super::serde_balance")]
         balance: chain::Balance
     },
+    Error(Error)
 }
 
 impl Balance {
     pub fn new() -> Self{
         let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
-        accounts.insert(AccountIdWrapper::from_hex(ALICE), 102_400_000_000_000_000);
+        accounts.insert(AccountIdWrapper::from_hex(ALICE), 1_024_000_000_000_000);
         Balance { accounts }
     }
 }
@@ -76,17 +83,25 @@ impl contracts::Contract<Command, Request, Response> for Balance {
         }
     }
 
-    fn handle_query(&mut self, req: Request) -> Response {
-        // todo: should validate user id first.
-
-        match req {
-            Request::FreeBalance {account} => {
-                let mut balance: chain::Balance = 0;
-                if let Some(ba) = self.accounts.get(&account) {
-                    balance = *ba;
-                }
-                Response::FreeBalance { balance }
-            },
+    fn handle_query(&mut self, origin: Option<&chain::AccountId>, req: Request) -> Response {
+        let inner = || -> Result<Response, Error> {
+            // todo: should validate user id first.    
+            match req {
+                Request::FreeBalance {account} => {
+                    if origin == None || origin.unwrap() != &account.0 {
+                        return Err(Error::NotAuthorized)
+                    }
+                    let mut balance: chain::Balance = 0;
+                    if let Some(ba) = self.accounts.get(&account) {
+                        balance = *ba;
+                    }
+                    Ok(Response::FreeBalance { balance })
+                },
+            }
+        };
+        match inner() {
+            Err(error) => Response::Error(error),
+            Ok(resp) => resp
         }
     }
 }
