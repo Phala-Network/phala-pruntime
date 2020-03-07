@@ -36,6 +36,7 @@ pub enum Request {
     FreeBalance {
         account: AccountIdWrapper
     },
+    TotalIssuance,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Response {
@@ -43,13 +44,19 @@ pub enum Response {
         #[serde(with = "super::serde_balance")]
         balance: chain::Balance
     },
+    TotalIssuance {
+        #[serde(with = "super::serde_balance")]
+        total_issuance: chain::Balance
+    },
     Error(Error)
 }
+
+const SUPPLY: u128 = 1_024_000_000_000_000;
 
 impl Balance {
     pub fn new() -> Self{
         let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
-        accounts.insert(AccountIdWrapper::from_hex(ALICE), 1_024_000_000_000_000);
+        accounts.insert(AccountIdWrapper::from_hex(ALICE), SUPPLY);
         Balance { accounts }
     }
 }
@@ -97,6 +104,9 @@ impl contracts::Contract<Command, Request, Response> for Balance {
                     }
                     Ok(Response::FreeBalance { balance })
                 },
+                Request::TotalIssuance => {
+                    Ok(Response::TotalIssuance { total_issuance: SUPPLY })
+                }
             }
         };
         match inner() {
