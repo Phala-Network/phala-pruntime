@@ -64,7 +64,7 @@ impl Balance {
 impl contracts::Contract<Command, Request, Response> for Balance {
     fn id(&self) -> contracts::ContractId { contracts::BALANCE }
 
-    fn handle_command(&mut self, origin: &chain::AccountId, txref: &TxRef, cmd: Command) {
+    fn handle_command(&mut self, origin: &chain::AccountId, _txref: &TxRef, cmd: Command) {
         match cmd {
             Command::Transfer {dest, value} => {
                 let o = AccountIdWrapper(origin.clone());

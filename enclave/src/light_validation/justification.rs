@@ -29,7 +29,7 @@ use finality_grandpa::voter_set::VoterSet;
 use finality_grandpa::{Error as GrandpaError};
 use sp_runtime::traits::{NumberFor, Block as BlockT, Header as HeaderT};
 use sp_core::{H256};
-use sp_finality_grandpa::{AuthorityId, RoundNumber, SetId as SetIdNumber, AuthoritySignature};
+use sp_finality_grandpa::{AuthorityId, AuthoritySignature};
 
 use super::wasm_hacks::header_hash;
 
@@ -226,16 +226,6 @@ impl<Block: BlockT> finality_grandpa::Chain<Block::Hash, NumberFor<Block>> for A
 	fn best_chain_containing(&self, _block: Block::Hash) -> Option<(Block::Hash, NumberFor<Block>)> {
 		None
 	}
-}
-
-#[cfg(not(test))]
-fn localized_payload<E: Encode>(round: RoundNumber, set_id: SetIdNumber, message: &E) -> Vec<u8> {
-	(message, round, set_id).encode()
-}
-
-#[cfg(test)]
-pub(crate) fn localized_payload<E: Encode>(round: RoundNumber, set_id: SetIdNumber, message: &E) -> Vec<u8> {
-	(message, round, set_id).encode()
 }
 
 // copied

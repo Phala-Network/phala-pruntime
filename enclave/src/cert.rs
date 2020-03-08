@@ -53,6 +53,7 @@ pub const IAS_REPORT_CA:&[u8] = include_bytes!("../AttestationReportSigningCACer
 const ISSUER : &str = "MesaTEE";
 const SUBJECT : &str = "MesaTEE";
 
+#[allow(dead_code)]
 pub fn gen_ecc_cert(payload: String,
                     prv_k: &sgx_ec256_private_t,
                     pub_k: &sgx_ec256_public_t,
@@ -193,6 +194,7 @@ pub fn percent_decode(orig: String) -> String {
     ret
 }
 
+#[allow(dead_code)]
 pub fn verify_mra_cert(cert_der: &[u8]) -> Result<(), sgx_status_t> {
     // Before we reach here, Webpki already verifed the cert is properly signed
 

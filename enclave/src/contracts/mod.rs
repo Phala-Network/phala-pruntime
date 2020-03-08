@@ -1,7 +1,7 @@
 use crate::std::string::String;
 use crate::std::fmt::Debug;
 
-use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::types::TxRef;
 

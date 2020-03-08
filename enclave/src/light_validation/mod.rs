@@ -194,15 +194,15 @@ impl<T: Trait> LightValidation<T>
 
 #[derive(Debug)]
 pub enum Error {
-	InvalidStorageProof,
+	// InvalidStorageProof,
 	StorageRootMismatch,
 	StorageValueUnavailable,
-	InvalidValidatorSetProof,
+	// InvalidValidatorSetProof,
 	ValidatorSetMismatch,
 	InvalidAncestryProof,
 	NoSuchBridgeExists,
 	InvalidFinalityProof,
-	UnknownClientError,
+	// UnknownClientError,
 	HeaderAncestryMismatch,
 }
 
