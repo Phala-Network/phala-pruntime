@@ -18,6 +18,44 @@ The runtime contains the following components:
 - Confiidential contract executor & state manager
 - Restful RPC service
 
+## Overview
+
+```text
+├── app                         Enclave loader and Restful API server (host side)
+│   ├── build.rs
+│   ├── src
+│   │   ├── attestation.rs      Host side Remote Attestation helper
+│   │   └── main.rs             Entry
+├── docs
+│   └── sgx.md                  SGX Hardware & SDK & Driver configuration guide
+├── enclave                     pRuntime in SGX encalve
+│   ├── Cargo.toml
+│   ├── Makefile
+│   └── src
+│       ├── cert.rs             RA cert utils
+│       ├── contracts           Confidential contract implementation
+│       │   ├── balance.rs      Contract 2: Balances
+│       │   ├── data_plaza.rs   Contract 1: DataPlaza
+│       │   └── mod.rs
+│       ├── cryptography
+│       │   ├── aead.rs         AEAD-AES-GCM-256 encryption
+│       │   ├── ecdh.rs         ECDH (secp256r1) key agreement
+│       │   └── mod.rs
+│       ├── hex.rs              Hex utils
+│       ├── lib.rs                  pRuntime main entry
+│       ├── light_validation        Substrate light client
+│       │   ├── error.rs
+│       │   ├── justification.rs    Block justification validation
+│       │   ├── mod.rs
+│       │   ├── storage_proof.rs    Storage proof validation
+│       │   └── wasm_hacks.rs       Hacks to get sgx-sdk happy with Substrate
+│       └── types.rs            Serializable structures
+├── Makefile
+├── Readme.md
+└── scripts
+    └── console.sh              Helper script for debugging
+```
+
 ## Docker bulid
 
 Plase refer to [plibra-grant-docker](https://github.com/Phala-Network/plibra-grant-docker). It
