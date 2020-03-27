@@ -11,6 +11,7 @@ extern crate lazy_static;
 extern crate rocket;
 #[macro_use]
 extern crate rocket_contrib;
+extern crate rocket_cors;
 
 extern crate serde;
 extern crate serde_json;
@@ -33,7 +34,9 @@ use std::io::{Read, Write};
 use std::sync::{Arc, RwLock};
 use std::env;
 
+use rocket::http::Method;
 use rocket_contrib::json::{Json, JsonValue};
+use rocket_cors::{AllowedHeaders, AllowedOrigins, AllowedMethods, Cors, CorsOptions};
 
 use contract_input::ContractInput;
 use contract_output::ContractOutput;
@@ -621,6 +624,20 @@ fn get(contract_input: Json<ContractInput>) -> JsonValue {
     }
 }
 
+fn cors_options() -> CorsOptions {
+    let allowed_origins = AllowedOrigins::all();
+    let allowed_methods: AllowedMethods = vec![Method::Get, Method::Post].into_iter().map(From::from).collect();
+
+    // You can also deserialize this
+    rocket_cors::CorsOptions {
+        allowed_origins,
+        allowed_methods,
+        allowed_headers: AllowedHeaders::all(),
+        allow_credentials: true,
+        ..Default::default()
+    }
+}
+
 fn rocket() -> rocket::Rocket {
     rocket::ignite()
         .mount("/", routes![
@@ -628,6 +645,9 @@ fn rocket() -> rocket::Rocket {
             dump_states, load_states,
             sync_block, query,
             set, get])
+        .attach(cors_options().to_cors().expect("To not fail"))
+        // .mount("/", rocket_cors::catch_all_options_routes()) // mount the catch all routes
+        // .manage(cors_options().to_cors().expect("To not fail"))
 }
 
 fn main() { ;
