@@ -84,6 +84,7 @@ type EcdhKey = ring::agreement::EphemeralPrivateKey;
 struct RuntimeState {
     contract1: contracts::data_plaza::DataPlaza,
     contract2: contracts::balance::Balance,
+    contract3: contracts::assets::Assets,
     #[serde(serialize_with = "se_to_b64", deserialize_with = "de_from_b64")]
     light_client: ChainLightValidation,
     main_bridge: u64
@@ -117,6 +118,7 @@ lazy_static! {
         SgxMutex::new(RuntimeState {
             contract1: contracts::data_plaza::DataPlaza::new(),
             contract2: contracts::balance::Balance::new(),
+            contract3: contracts::assets::Assets::new(),
             light_client: ChainLightValidation::new(),
             main_bridge: 0
         })
@@ -599,7 +601,7 @@ pub extern "C" fn ecall_handle(
     let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let input_value = input.get("input").unwrap().clone();
-    // Strong typed 
+    // Strong typed
     fn load_param<T: de::DeserializeOwned>(input_value: serde_json::value::Value) -> T {
         serde_json::from_value(input_value).unwrap()
     }
@@ -751,7 +753,7 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     let sk = SecretKey::random(&mut prng);
     let pk = PublicKey::from_secret_key(&sk);
     let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-    
+
     // ECDH identity
     let ecdh_sk = ecdh::generate_key();
     let ecdh_pk = ecdh_sk.compute_public_key().expect("can't compute pubkey");
@@ -776,7 +778,7 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
                 return Err(json!({"message": "Error while connecting to IAS"}))
             }
         };
-        
+
         map.insert("report".to_owned(), json!(attn_report));
         map.insert("signature".to_owned(), json!(sig));
         map.insert("signing_cert".to_owned(), json!(cert));
@@ -788,7 +790,7 @@ fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
                       ::decode(&mut raw_genesis.as_slice())
                        .expect("Can't decode bridge_genesis_info_b64");
-    
+
     let mut state = STATE.lock().unwrap();
     let bridge_id = state.light_client.initialize_bridge(
         genesis.block_header,
@@ -838,7 +840,7 @@ mod contracts;
 mod types;
 
 use types::TxRef;
-use contracts::{Contract, ContractId, DATA_PLAZA, BALANCE};
+use contracts::{Contract, ContractId, DATA_PLAZA, BALANCE, ASSETS};
 
 extern crate runtime as chain;
 
@@ -925,9 +927,9 @@ fn test_bridge() {
     let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
                       ::decode(&mut raw_genesis.as_slice())
                        .expect("Can't decode bridge_genesis_info_b64");
-    
+
     println!("bridge_genesis_info_b64: {:?}", genesis);
-    
+
     let mut state = STATE.lock().unwrap();
     let id = state.light_client.initialize_bridge(
         genesis.block_header,
@@ -952,7 +954,7 @@ fn test_ecdh(params: TestEcdhParam) {
         Some(d) => d.as_slice(),
         None => bob_pub.as_ref()
     };
-    
+
     let local_state = LOCAL_STATE.lock().unwrap();
     let alice_priv = &local_state.ecdh_private_key.as_ref()
         .expect("ECDH private key not initialized");
@@ -982,7 +984,7 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
             cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed").msg
         }
     };
-    
+
     let origin = if let Some((chain::Address::Id(account_id), _, _)) = origin {
         account_id
     } else {
@@ -1000,6 +1002,10 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
         BALANCE => state.contract2.handle_command(
             &origin, pos,
             serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract2 cmd")
+        ),
+        ASSETS => state.contract3.handle_command(
+            &origin, pos,
+            serde_json::from_slice(inner_data.as_slice()).expect("Failed to deser contract3 cmd")
         ),
         _ => println!("handle_execution: Skipped unknown contract: {}", contract_id)
     }
@@ -1103,7 +1109,7 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
                 println!("cipher: {:?}", cipher);
                 let result = cryptography::decrypt(&cipher, ecdh_privkey).expect("Decrypt failed");
                 (result.msg, Some(result.secret), local_state.ecdh_public_key.clone())
-            }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+            }
         }
     };
     println!("msg: {}", String::from_utf8_lossy(&msg));
@@ -1131,8 +1137,14 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
             state.contract2.handle_query(
                 accid_origin.as_ref(),
                 types::deopaque_query(opaque_query)
-                .map_err(|_| error_msg("Malformed request (balace::Request)"))?.request)
+                .map_err(|_| error_msg("Malformed request (balance::Request)"))?.request)
             ).unwrap(),
+        ASSETS => serde_json::to_value(
+            state.contract3.handle_query(
+                accid_origin.as_ref(),
+                types::deopaque_query(opaque_query)
+                    .map_err(|_| error_msg("Malformed request (assets::Request)"))?.request)
+        ).unwrap(),
         _ => return Err(Value::Null)
     };
     // Encrypt response if necessary
