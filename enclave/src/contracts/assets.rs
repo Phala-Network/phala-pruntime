@@ -16,7 +16,7 @@ pub type AssetId = u32;
 pub struct AssetMetadata {
     owner: AccountIdWrapper,
     #[serde(with = "super::serde_balance")]
-    total_supply: chain::Balance,
+    total_supply: u128,
     symbol: String,
     id: u32
 }
@@ -25,7 +25,6 @@ pub struct AssetMetadata {
 pub struct Assets {
     assets: BTreeMap<u32, BTreeMap<AccountIdWrapper, chain::Balance>>,
     metadata: Vec<AssetMetadata>
-    // accounts: BTreeMap<AccountIdWrapper, chain::Balance>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -114,10 +113,9 @@ impl contracts::Contract<Command, Request, Response> for Assets {
         match cmd {
             Command::Issue {symbol, total} => {
                 let o = AccountIdWrapper(origin.clone());
-                // TODO: check symbol's length and format
                 println!("Issue: [{}] -> [{}]: {}", o.to_string(), symbol, total);
 
-                if let None = self.metadata.iter().find(|&metadatum| metadatum.symbol == symbol) {
+                if let None = self.metadata.iter().find(|metadatum| metadatum.symbol == symbol) {
                     let mut accounts = BTreeMap::<AccountIdWrapper, chain::Balance>::new();
                     accounts.insert(o.clone(), total);
 
@@ -205,7 +203,7 @@ impl contracts::Contract<Command, Request, Response> for Assets {
                         let metadatum = self.metadata.get(position).unwrap();
                         Ok(Response::TotalSupply { total_issuance: metadatum.total_supply })
                     } else {
-                        Ok(Response::TotalSupply { total_issuance: 0 })
+                        Err(Error::Other(String::from("Asset not found")))
                     }
                 },
                 Request::Metadata => {
