@@ -3,6 +3,14 @@ use sp_core::hashing::blake2_256;
 use sp_core::H256;
 use parity_scale_codec::Encode;
 
+use sc_executor::native_executor_instance;
+// Our native executor instance.
+native_executor_instance!(
+	pub Executor,
+	(sp_io::hashing::HostFunctions)
+);
+
+
 pub fn header_hash<H: Encode>(header: &H) -> H256 {
 	let data = header.encode();
 	blake2_256(&data.as_slice()).into()

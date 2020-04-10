@@ -43,6 +43,7 @@ sp-io                = { path = "../../phala-blockchain/substrate/primitives/io"
 sp-runtime-interface = { path = "../../phala-blockchain/substrate/primitives/runtime-interface", default-features = false }
 sp-runtime           = { path = "../../phala-blockchain/substrate/primitives/runtime", default-features = false }
 parity-scale-codec   = { package = "parity-scale-codec", version = "1.0.0", default-features = false, features = ["derive"] }
+sc-executor          = { path = "../../phala-blockchain/substrate/client/executor", default-features = false }
 
 csv-core = { version = "0.1.5", default-features = false }
 

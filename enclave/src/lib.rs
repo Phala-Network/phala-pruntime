@@ -15,6 +15,8 @@
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 
+#[macro_use] extern crate sc_executor;
+
 use sgx_types::*;
 use sgx_tse::*;
 use sgx_tcrypto::*;
