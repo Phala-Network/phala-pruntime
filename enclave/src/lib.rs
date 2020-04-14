@@ -125,8 +125,9 @@ lazy_static! {
     };
 
     static ref LOCAL_STATE: SgxMutex<LocalState> = {
-        // TODO: Hard code init value
-        let sk = SecretKey::parse_slice(hex::decode_hex("8431d995681fc0a8576a56bbc2e24a322f84b1408d4bf35694c325c9407dd2e8").as_slice()).unwrap();
+        // Give it an uninitialized default. Will be reset when initialig pRuntime. x
+        let raw_pk = hex::decode_hex("0000000000000000000000000000000000000000000000000000000000000001");
+        let sk = SecretKey::parse_slice(raw_pk.as_slice()).unwrap();
         let pk = PublicKey::from_secret_key(&sk);
 
         SgxMutex::new(
