@@ -314,7 +314,6 @@ pub fn get_sigrl_from_intel(fd : c_int, gid : u32) -> Vec<u8> {
     parse_response_sigrl(&plaintext)
 }
 
-// TODO: support pse
 pub fn get_report_from_intel(fd : c_int, quote : Vec<u8>) -> (String, String, String) {
     println!("get_report_from_intel fd = {:?}", fd);
     let config = make_ias_client_config();
