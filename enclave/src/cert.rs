@@ -8,7 +8,6 @@ use std::untrusted::time::SystemTimeEx;
 use sgx_tcrypto::*;
 use sgx_types::*;
 
-use super::CERTEXPIRYDAYS;
 use std::io::BufReader;
 use rustls;
 use yasna;
@@ -24,6 +23,8 @@ use chrono::Duration;
 use chrono::TimeZone;
 use chrono::Utc as TzUtc;
 use itertools::Itertools;
+
+const CERTEXPIRYDAYS: i64 = 90i64;
 
 extern "C" {
     pub fn ocall_get_update_info (ret_val: *mut sgx_status_t,

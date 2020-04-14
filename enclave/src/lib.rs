@@ -146,7 +146,6 @@ lazy_static! {
 pub const DEV_HOSTNAME:&'static str = "api.trustedservices.intel.com";
 pub const SIGRL_SUFFIX:&'static str = "/sgx/dev/attestation/v3/sigrl/";
 pub const REPORT_SUFFIX:&'static str = "/sgx/dev/attestation/v3/report";
-pub const CERTEXPIRYDAYS: i64 = 90i64;
 
 fn load_spid(filename: &str) -> sgx_spid_t {
     let mut spidfile = fs::File::open(filename).expect("cannot open spid file");
