@@ -178,7 +178,6 @@ impl contracts::Contract<Command, Request, Response> for Assets {
 
     fn handle_query(&mut self, origin: Option<&chain::AccountId>, req: Request) -> Response {
         let inner = || -> Result<Response, Error> {
-            // todo: should validate user id first.
             match req {
                 Request::Balance { id, account } => {
                     if origin == None || origin.unwrap() != &account.0 {
