@@ -1,6 +1,8 @@
 pRuntime
 ====
 
+<img align="right" width="320" src="docs/static/web3 foundation_grants_badge_black.svg" alt="Funded by the web3 foundation">
+
 **Working in progress**
 
 This is the implementation of pRuntime (Phala Network TEE Runtime) based on Intel SGX. It's the
