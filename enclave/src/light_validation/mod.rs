@@ -227,7 +227,7 @@ impl<T: Trait> LightValidation<T>
 		validator_set: &Vec<(AuthorityId, AuthorityWeight)>,
 	) -> Result<(), Error> {
 
-		let checker = <StorageProofChecker<<T::Hashing as sp_runtime::traits::Hash>::Hasher>>::new(
+		let checker = <StorageProofChecker<T::Hashing>>::new(
 			*state_root,
 			proof.clone()
 		)?;
