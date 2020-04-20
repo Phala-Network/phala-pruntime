@@ -882,10 +882,7 @@ fn parse_block(data: &Vec<u8>) -> Result<chain::SignedBlock, parity_scale_codec:
 }
 
 fn format_address(addr: &chain::Address) -> String {
-    match addr {
-        chain::Address::Id(id) => hex::encode_hex_compact(id.as_ref()),
-        chain::Address::Index(index) => format!("index:{}", index)
-    }
+    hex::encode_hex_compact(addr.as_ref())
 }
 
 fn test_parse_block() {
@@ -983,7 +980,7 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
         }
     };
 
-    let origin = if let Some((chain::Address::Id(account_id), _, _)) = origin {
+    let origin = if let Some((account_id, _, _)) = origin {
         account_id
     } else {
         panic!("No account id found for tx {:?}", pos);
@@ -1012,7 +1009,7 @@ fn handle_execution(state: &mut RuntimeState, pos: &TxRef,
 fn dispatch(block: &chain::SignedBlock, ecdh_privkey: &EcdhKey) {
     let ref mut state = STATE.lock().unwrap();
     for (i, xt) in block.block.extrinsics.iter().enumerate() {
-        if let chain::Call::Execution(chain::ExecutionCall::push_command(contract_id, payload)) = &xt.function {
+        if let chain::Call::PhalaModule(chain::pallet_phala::Call::push_command(contract_id, payload)) = &xt.function {
             println!("push_command(contract_id: {}, payload: data[{}])", contract_id, payload.len());
             let pos = TxRef {
                 blocknum: block.block.header.number,

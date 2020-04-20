@@ -53,6 +53,7 @@ use parity_scale_codec::{Encode, Decode};
 use sp_finality_grandpa::{AuthorityId, AuthorityWeight, AuthorityList, SetId};
 use finality_grandpa::voter_set::VoterSet;
 use sp_core::H256;
+use sp_core::Hasher;
 use num::AsPrimitive;
 use sp_runtime::Justification;
 use sp_runtime::traits::{Block as BlockT, Header, NumberFor};
@@ -102,7 +103,7 @@ pub struct LightValidation<T: Trait> {
 }
 
 impl<T: Trait> LightValidation<T>
-	where 
+	where
 		NumberFor<T::Block>: AsPrimitive<usize> {
 
 	pub fn new() -> Self {
