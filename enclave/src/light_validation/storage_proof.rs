@@ -59,7 +59,7 @@ impl<H> StorageProofChecker<H>
 	pub fn read_value(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
 		self.trie()?
 			.get(key)
-			.map(|value| value.map(|value| value.into_vec()))
+			.map(|value| value.map(|value| value.to_vec()))
 			.map_err(|_| Error::StorageValueUnavailable)
 	}
 

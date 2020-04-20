@@ -15,6 +15,8 @@
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 
+extern crate runtime as chain;
+
 use sgx_types::*;
 use sgx_tse::*;
 use sgx_tcrypto::*;
@@ -840,9 +842,6 @@ mod types;
 
 use types::TxRef;
 use contracts::{Contract, ContractId, DATA_PLAZA, BALANCE, ASSETS};
-
-extern crate runtime as chain;
-
 
 fn fmt_call(call: &chain::Call) -> String {
     match call {
