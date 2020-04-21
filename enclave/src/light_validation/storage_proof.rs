@@ -30,8 +30,10 @@ pub(crate) type StorageProof = Vec<Vec<u8>>;
 pub struct StorageProofChecker<H>
 	where H: Hasher
 {
-	root: H::Out,
-	db: MemoryDB<H>,
+	// core::Pam
+	// root: H::Out,
+	// db: MemoryDB<H>,
+	d: core::marker::PhantomData<H>,
 }
 
 impl<H> StorageProofChecker<H>
@@ -41,31 +43,34 @@ impl<H> StorageProofChecker<H>
 	///
 	/// This returns an error if the given proof is invalid with respect to the given root.
 	pub fn new(root: H::Out, proof: StorageProof) -> Result<Self, Error> {
-		let mut db = MemoryDB::default();
-		for item in proof {
-			db.insert(EMPTY_PREFIX, &item);
-		}
+		// let mut db = MemoryDB::default();
+		// for item in proof {
+		// 	db.insert(EMPTY_PREFIX, &item);
+		// }
 		let checker = StorageProofChecker {
-			root,
-			db,
+			// root,
+			// db,
+			d: core::marker::PhantomData::<H>::default(),
 		};
 		// Return error if trie would be invalid.
-		let _ = checker.trie()?;
+		// let _ = checker.trie()?;
 		Ok(checker)
 	}
 
 	/// Reads a value from the available subset of storage. If the value cannot be read due to an
 	/// incomplete or otherwise invalid proof, this returns an error.
 	pub fn read_value(&self, key: &[u8]) -> Result<Option<Vec<u8>>, Error> {
-		self.trie()?
-			.get(key)
-			.map(|value| value.map(|value| value.to_vec()))
-			.map_err(|_| Error::StorageValueUnavailable)
+		Err(Error::StorageRootMismatch)
+		// self.trie()?
+		// 	.get(key)
+		// 	.map(|value| value.map(|value| value.to_vec()))
+		// 	.map_err(|_| Error::StorageValueUnavailable)
 	}
 
 	fn trie(&self) -> Result<TrieDB<H>, Error> {
-		TrieDB::new(&self.db, &self.root)
-			.map_err(|_| Error::StorageRootMismatch)
+		Err(Error::StorageRootMismatch)
+		// TrieDB::new(&self.db, &self.root)
+		// 	.map_err(|_| Error::StorageRootMismatch)
 	}
 }
 
