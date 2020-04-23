@@ -44,13 +44,24 @@ enclave {
 
         public sgx_status_t ecall_handle(
             uint8_t action,
-            [in, size = input_len] uint8_t *input_ptr, size_t input_len,
-            [out, size = output_buf_len] uint8_t *output_ptr,
-            [out] size_t *output_len_ptr, size_t output_buf_len
+            [in, size = input_len] uint8_t* input_ptr,
+            uint32_t input_len,
+            [out, size = output_buf_maxlen] uint8_t* output_ptr,
+            [out] uint32_t* output_len_ptr,
+            uint32_t output_buf_maxlen
+        );
+
+        public sgx_status_t ecall_test(
+            [in, size = input_len] uint8_t* input_ptr,
+            uint32_t input_len,
+            [out, size = output_buf_maxlen] uint8_t* output_ptr,
+            [out] uint32_t* output_len_ptr,
+            uint32_t output_buf_maxlen
         );
 
         public sgx_status_t ecall_set_state(
-            [in, size = input_len] uint8_t *input_ptr, size_t input_len
+            [in, size = input_len] const uint8_t* input_ptr,
+            uint32_t input_len
         );
     };
 
@@ -80,8 +91,9 @@ enclave {
             [out] sgx_update_info_bit_t * update_info
         );
         sgx_status_t ocall_dump_state(
-            [out, size = output_buf_len] uint8_t *output_ptr,
-            [out] size_t *output_len_ptr, size_t output_buf_len
+            [out, size = output_buf_maxlen] uint8_t *output_ptr,
+            [out] uint32_t *output_len_ptr,
+            uint32_t output_buf_maxlen
         );
     };
 };

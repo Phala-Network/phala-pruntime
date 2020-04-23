@@ -30,7 +30,7 @@ webpki-roots= { git = "https://github.com/mesalock-linux/webpki-roots", branch =
 serde       = { git = "https://github.com/mesalock-linux/serde-sgx", features = ["derive"] } #{ path = "../vendor/serde/serde", features = ["derive"] }
 serde_json  = { git = "https://github.com/mesalock-linux/serde-json-sgx" } # { path = "../vendor/serde-json" }
 libsecp256k1= { git = "https://github.com/mesalock-linux/libsecp256k1-rs-sgx" } # { path = "../vendor/libsecp256k1" }
-rand        = { git = "https://github.com/mesalock-linux/rand-sgx", tag = "v0.6.5_sgx1.1.0" } # <-- matches libsecp256k1    { path = "../vendor/rand"}
+rand        = { git = "https://github.com/mesalock-linux/rand-sgx", tag = "v0.6.5_sgx1.1.1" } # <-- matches libsecp256k1    { path = "../vendor/rand"}
 # rand_core   = { git = "https://github.com/mesalock-linux/rand-sgx", features = ["getrandom"] } # { path = "../vendor/rand/rand_os"}
 
 bit-vec     = { version = "*", default-features = false}
