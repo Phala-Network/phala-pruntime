@@ -23,7 +23,6 @@ use sgx_tcrypto::*;
 use sgx_rand::*;
 
 use crate::std::prelude::v1::*;
-use crate::std::convert::TryFrom;
 use crate::std::sync::Arc;
 use crate::std::net::TcpStream;
 use crate::std::string::String;
@@ -75,8 +74,8 @@ extern "C" {
     pub fn ocall_dump_state(
         ret_val: *mut sgx_status_t,
         output_ptr : *mut u8,
-        output_len_ptr: *mut u32,
-        output_buf_maxlen: u32
+        output_len_ptr: *mut usize,
+        output_buf_len: usize
     ) -> sgx_status_t;
 }
 
@@ -103,14 +102,14 @@ struct LocalState {
 }
 
 fn se_to_b64<S>(value: &ChainLightValidation, serializer: S) -> Result<S::Ok, S::Error>
-where S: Serializer {
-  let data = value.encode();
-  let s = base64::encode(data.as_slice());
-  String::serialize(&s, serializer)
+    where S: Serializer {
+    let data = value.encode();
+    let s = base64::encode(data.as_slice());
+    String::serialize(&s, serializer)
 }
 
 fn de_from_b64<'de, D>(deserializer: D) -> Result<ChainLightValidation, D::Error>
-where D: Deserializer<'de> {
+    where D: Deserializer<'de> {
     let s = String::deserialize(deserializer)?;
     let data = base64::decode(&s).map_err(de::Error::custom)?;
     ChainLightValidation::decode(&mut data.as_slice()).map_err(|_| de::Error::custom("bad data"))
@@ -585,9 +584,9 @@ struct TestEcdhParam {
 
 #[no_mangle]
 pub extern "C" fn ecall_set_state(
-    input_ptr: *const u8, input_len: u32
+    input_ptr: *const u8, input_len: usize
 ) -> sgx_status_t {
-    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len as usize) };
+    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input_value: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let _input = input_value.as_object().unwrap();
 
@@ -597,15 +596,12 @@ pub extern "C" fn ecall_set_state(
 #[no_mangle]
 pub extern "C" fn ecall_handle(
     action: u8,
-    input_ptr: *const u8, input_len: u32,
-    output_ptr : *mut u8, output_len_ptr: *mut u32, output_buf_maxlen: u32
+    input_ptr: *const u8, input_len: usize,
+    output_ptr : *mut u8, output_len_ptr: *mut usize, output_buf_len: usize
 ) -> sgx_status_t {
-    println!("Dispatching action");
-
-    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len as usize) };
+    let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
     let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     let input_value = input.get("input").unwrap().clone();
-
     // Strong typed
     fn load_param<T: de::DeserializeOwned>(input_value: serde_json::value::Value) -> T {
         serde_json::from_value(input_value).unwrap()
@@ -665,45 +661,14 @@ pub extern "C" fn ecall_handle(
     let output_json_vec_len_ptr = &output_json_vec_len as *const usize;
 
     unsafe {
-        if output_json_vec_len <= output_buf_maxlen as usize {
-            ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
-                                    output_ptr,
-                                    output_json_vec_len);
-        } else {
-            panic!("output buf overflow")
-        }
-    }
-
-    sgx_status_t::SGX_SUCCESS
-}
-
-#[no_mangle]
-pub extern "C" fn ecall_test(
-    action: u8,
-    input_ptr: *const u8, input_len: u32,
-    output_ptr : *mut u8, output_len_ptr: *mut u32, output_buf_maxlen: u32
-) -> sgx_status_t {
-    println!("In ECall");
-
-    // let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len as usize) };
-    // let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
-    // let input_value = input.get("input").unwrap().clone();
-
-    let output_json = json!({"foo": "bar"});
-    let output_json_vec = serde_json::to_vec(&output_json).unwrap();
-    let output_json_vec_len = output_json_vec.len();
-    let output_json_vec_len_ptr = &output_json_vec_len as *const usize;
-
-    println!("{} {} {}", input_len.clone(), output_json_vec_len.clone(), output_buf_maxlen.clone());
-
-    unsafe {
-        if output_json_vec_len < output_buf_maxlen as usize {
+        if output_json_vec_len <= output_buf_len {
             ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
                                      output_ptr,
                                      output_json_vec_len);
-        } else {
-            panic!("output buf overflow")
         }
+        ptr::copy_nonoverlapping(output_json_vec_len_ptr,
+                                 output_len_ptr,
+                                 std::mem::size_of_val(&output_json_vec_len));
     }
 
     sgx_status_t::SGX_SUCCESS
@@ -780,75 +745,72 @@ fn load_states(input: &Map<String, Value>) -> Result<Value, Value> {
 
 fn init_runtime(input: InitRuntimeReq) -> Result<Value, Value> {
     // TODO: Guard only initialize once
-    // if LOCAL_STATE.lock().unwrap().initialized {
-    //     return Err(json!({"message": "Already initialized"}))
-    // }
-    //
-    // println!("Initializing runtime");
-    //
-    // // Generate identity
-    // let mut prng = rand::rngs::OsRng::default();
-    // let sk = SecretKey::random(&mut prng);
-    // let pk = PublicKey::from_secret_key(&sk);
-    // let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
-    //
-    // // ECDH identity
-    // let ecdh_sk = ecdh::generate_key();
-    // let ecdh_pk = ecdh_sk.compute_public_key().expect("can't compute pubkey");
-    // let s_ecdh_pk = hex::encode_hex_compact(ecdh_pk.as_ref());
-    // println!("ECDH pubkey: {:?}", ecdh_pk);
-    //
-    // // Save identity
-    // let mut local_state = LOCAL_STATE.lock().unwrap();
-    // (*local_state).initialized = true;
-    // *local_state.public_key = pk.clone();
-    // *local_state.private_key = sk.clone();
-    // local_state.ecdh_private_key = Some(ecdh_sk);
-    // local_state.ecdh_public_key = Some(ecdh_pk);
-    //
-    // // Produce remote attestation report
-    // let mut map = serde_json::Map::new();
-    // if !input.skip_ra {
-    //     let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
-    //         Ok(r) => r,
-    //         Err(e) => {
-    //             println!("Error in create_attestation_report: {:?}", e);
-    //             return Err(json!({"message": "Error while connecting to IAS"}))
-    //         }
-    //     };
-    //
-    //     map.insert("report".to_owned(), json!(attn_report));
-    //     map.insert("signature".to_owned(), json!(sig));
-    //     map.insert("signing_cert".to_owned(), json!(cert));
-    // }
-    //
-    // // Initialize bridge
-    // let raw_genesis = base64::decode(&input.bridge_genesis_info_b64)
-    //                       .expect("Bad bridge_genesis_info_b64");
-    // let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
-    //                   ::decode(&mut raw_genesis.as_slice())
-    //                    .expect("Can't decode bridge_genesis_info_b64");
-    //
-    // let mut state = STATE.lock().unwrap();
-    // let bridge_id = state.light_client.initialize_bridge(
-    //     genesis.block_header,
-    //     genesis.validator_set,
-    //     genesis.validator_set_proof)
-    //     .expect("Bridge initialize failed");
-    // state.main_bridge = bridge_id;
-    //
-    // Ok(
-    //     json!({
-    //         "public_key": s_pk,
-    //         "ecdh_public_key": s_ecdh_pk,
-    //         "attestation": {
-    //             "version": 1,
-    //             "provider": "SGX",
-    //             "payload": map
-    //         }
-    //     })
-    // )
-    Ok(json!({}))
+    if LOCAL_STATE.lock().unwrap().initialized {
+        return Err(json!({"message": "Already initialized"}))
+    }
+
+    // Generate identity
+    let mut prng = rand::rngs::OsRng::default();
+    let sk = SecretKey::random(&mut prng);
+    let pk = PublicKey::from_secret_key(&sk);
+    let s_pk = hex::encode_hex_compact(pk.serialize_compressed().as_ref());
+
+    // ECDH identity
+    let ecdh_sk = ecdh::generate_key();
+    let ecdh_pk = ecdh_sk.compute_public_key().expect("can't compute pubkey");
+    let s_ecdh_pk = hex::encode_hex_compact(ecdh_pk.as_ref());
+    println!("ECDH pubkey: {:?}", ecdh_pk);
+
+    // Save identity
+    let mut local_state = LOCAL_STATE.lock().unwrap();
+    (*local_state).initialized = true;
+    *local_state.public_key = pk.clone();
+    *local_state.private_key = sk.clone();
+    local_state.ecdh_private_key = Some(ecdh_sk);
+    local_state.ecdh_public_key = Some(ecdh_pk);
+
+    // Produce remote attestation report
+    let mut map = serde_json::Map::new();
+    if !input.skip_ra {
+        let (attn_report, sig, cert) = match create_attestation_report(&pk.serialize_compressed()) {
+            Ok(r) => r,
+            Err(e) => {
+                println!("Error in create_attestation_report: {:?}", e);
+                return Err(json!({"message": "Error while connecting to IAS"}))
+            }
+        };
+
+        map.insert("report".to_owned(), json!(attn_report));
+        map.insert("signature".to_owned(), json!(sig));
+        map.insert("signing_cert".to_owned(), json!(cert));
+    }
+
+    // Initialize bridge
+    let raw_genesis = base64::decode(&input.bridge_genesis_info_b64)
+        .expect("Bad bridge_genesis_info_b64");
+    let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
+    ::decode(&mut raw_genesis.as_slice())
+        .expect("Can't decode bridge_genesis_info_b64");
+
+    let mut state = STATE.lock().unwrap();
+    let bridge_id = state.light_client.initialize_bridge(
+        genesis.block_header,
+        genesis.validator_set,
+        genesis.validator_set_proof)
+        .expect("Bridge initialize failed");
+    state.main_bridge = bridge_id;
+
+    Ok(
+        json!({
+            "public_key": s_pk,
+            "ecdh_public_key": s_ecdh_pk,
+            "attestation": {
+                "version": 1,
+                "provider": "SGX",
+                "payload": map
+            }
+        })
+    )
 }
 
 /*
@@ -925,7 +887,7 @@ fn format_address(addr: &chain::Address) -> String {
 
 fn test_parse_block() {
     let raw_block: Vec<u8> = base64::decode("iAKMDRPbdbAZ0eev9OZ1QgaAkoEnazAp6JzH2GeRFYdsR+pFUBbOaAW0+k5K+jPtsEr/P/JKJQDSobnB98Qhf8ug8HkDygkapC5T++CNvzYORIFimatwYSu/U53t66xzpQgGYXVyYSCGvagPAAAAAAVhdXJhAQEuXZ5zy2+qk+60y+/m1r0oZv/+LEiDCxMotfkvjP9aebuUVxBTmd2LCpu645AAjpRUNhqOmVuiKreUoV1aMpWLCCgEAQALoPTZAm8BQQKE/9Q1k8cV/dMcYRQavQSpn9aCLIVYhUzN45pWhOelbaJ9AU5gayhZiGwAEAthrYW6Ucm+acGAR3whdfUk17jp4NMearo4+NxR2w0VsVkEF0gQ/U6AHggnM+BZmvrhhMdSygqlAQAABAD/jq8EFRaHc2Mmyf6hfiX8UodhNpPJEpCcsiaqR5TyakgHABCl1OgA")
-                                    .unwrap();
+        .unwrap();
     println!("SignedBlock data[{}]", raw_block.len());
     let block = match parse_block(&raw_block) {
         Ok(b) => b,
@@ -956,10 +918,10 @@ fn test_parse_block() {
 fn test_bridge() {
     // 1. load genesis
     let raw_genesis = base64::decode("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAh9rd6Uku4dTja+JQVMLsOZ5GtS4nU0cdpuvgchlapeMDFwoudZe3t+PYTAU5HROaYrFX54eG2MCC8p3PTBETFAAIiNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4BAAAAAAAAANF8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAQAAAAAAAAAMoQKALhCA33I0FGiDoLZ6HBWl1uCIt+sLgUbPlfMJqUk/gukhEt6AviHkl5KFGndUmA+ClBT2kPSvmBOvZTWowWjNYfynHU6AOFjSvKwU3s/vvRg7QOrJeehLgo9nGfN91yHXkHcWLkuAUJegqkIzp2A6LPkZouRRsKgiY4Wu92V8JXrn3aSXrw2AXDYZ0c8CICTMvasQ+rEpErmfEmg+BzH19s/zJX4LP8adAWRyYW5kcGFfYXV0aG9yaXRpZXNJAQEIiNw0F9UFjsS0UD4MEuoaCom+IA/piSJCPUM0AU+msO4BAAAAAAAAANF8LXgj6/Jg/ROPLX4n0RTAFF2Wi1/1AGEl8kFPra5pAQAAAAAAAABtAYKmqACASqIhjIQMli+MpltqIZlc2FVhXCd/m9F6k9Q5u13xU3JQXHh0cmluc2ljX2luZGV4EAAAAACAc0yvcsUiYcma5kSPZKxrMxbyDufisOfMmIsX1bDxfHc=")
-                           .expect("Bad bridge_genesis_innfo_b64");
+        .expect("Bad bridge_genesis_innfo_b64");
     let genesis = light_validation::BridgeInitInfo::<chain::Runtime>
-                      ::decode(&mut raw_genesis.as_slice())
-                       .expect("Can't decode bridge_genesis_info_b64");
+    ::decode(&mut raw_genesis.as_slice())
+        .expect("Can't decode bridge_genesis_info_b64");
 
     println!("bridge_genesis_info_b64: {:?}", genesis);
 
@@ -1164,14 +1126,14 @@ fn query(q: types::SignedQuery) -> Result<Value, Value> {
             state.contract1.handle_query(
                 accid_origin.as_ref(),
                 types::deopaque_query(opaque_query)
-                .map_err(|_| error_msg("Malformed request (data_plaza::Request)"))?.request)
-            ).unwrap(),
+                    .map_err(|_| error_msg("Malformed request (data_plaza::Request)"))?.request)
+        ).unwrap(),
         BALANCE => serde_json::to_value(
             state.contract2.handle_query(
                 accid_origin.as_ref(),
                 types::deopaque_query(opaque_query)
-                .map_err(|_| error_msg("Malformed request (balance::Request)"))?.request)
-            ).unwrap(),
+                    .map_err(|_| error_msg("Malformed request (balance::Request)"))?.request)
+        ).unwrap(),
         ASSETS => serde_json::to_value(
             state.contract3.handle_query(
                 accid_origin.as_ref(),
