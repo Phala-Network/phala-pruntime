@@ -23,6 +23,7 @@ use sgx_tcrypto::*;
 use sgx_rand::*;
 
 use crate::std::prelude::v1::*;
+use crate::std::convert::TryFrom;
 use crate::std::sync::Arc;
 use crate::std::net::TcpStream;
 use crate::std::string::String;
@@ -684,7 +685,7 @@ pub extern "C" fn ecall_test(
 ) -> sgx_status_t {
     println!("In ECall");
 
-    // let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len) };
+    // let input_slice = unsafe { std::slice::from_raw_parts(input_ptr, input_len as usize) };
     // let input: serde_json::value::Value = serde_json::from_slice(input_slice).unwrap();
     // let input_value = input.get("input").unwrap().clone();
 
@@ -693,8 +694,10 @@ pub extern "C" fn ecall_test(
     let output_json_vec_len = output_json_vec.len();
     let output_json_vec_len_ptr = &output_json_vec_len as *const usize;
 
+    println!("{} {} {}", input_len.clone(), output_json_vec_len.clone(), output_buf_maxlen.clone());
+
     unsafe {
-        if output_json_vec_len <= output_buf_maxlen as usize {
+        if output_json_vec_len < output_buf_maxlen as usize {
             ptr::copy_nonoverlapping(output_json_vec.as_ptr(),
                                      output_ptr,
                                      output_json_vec_len);

@@ -21,12 +21,13 @@ dependencies = [
  "num-traits 0.2.11",
  "parity-scale-codec",
  "phala-blockchain-runtime",
- "rand 0.7.3 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1)",
+ "rand 0.7.3 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2)",
  "ring 0.16.11",
  "rust-crypto",
  "rustls",
  "serde 1.0.105",
  "serde_json",
+ "sgx_backtrace",
  "sgx_rand",
  "sgx_rand_derive",
  "sgx_tcrypto",
@@ -110,7 +111,7 @@ checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 [[package]]
 name = "base64"
 version = "0.10.1"
-source = "git+https://github.com/mesalock-linux/rust-base64-sgx#cea11524d6a0916df66003e4635c0e686bec7b7b"
+source = "git+https://github.com/mesalock-linux/rust-base64-sgx#cdc4f4ab79522f75e4d178c3dcc0b1f0770c6a86"
 dependencies = [
  "sgx_tstd",
 ]
@@ -146,7 +147,7 @@ dependencies = [
 [[package]]
 name = "block-buffer"
 version = "0.7.3"
-source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#448345c12a20036a2589e524606165592f4a4171"
+source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#d3d9962a7d993b460ffacc603c2e898c1beced99"
 dependencies = [
  "block-padding 0.1.4",
  "byte-tools 0.3.1 (git+https://github.com/mesalock-linux/rustcrypto-utils-sgx)",
@@ -169,7 +170,7 @@ dependencies = [
 [[package]]
 name = "block-padding"
 version = "0.1.4"
-source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#448345c12a20036a2589e524606165592f4a4171"
+source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#d3d9962a7d993b460ffacc603c2e898c1beced99"
 dependencies = [
  "byte-tools 0.3.1 (git+https://github.com/mesalock-linux/rustcrypto-utils-sgx)",
 ]
@@ -192,7 +193,7 @@ checksum = "b0a5e3906bcbf133e33c1d4d95afc664ad37fbdb9f6568d8043e7ea8c27d93d3"
 [[package]]
 name = "byte-tools"
 version = "0.3.1"
-source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#448345c12a20036a2589e524606165592f4a4171"
+source = "git+https://github.com/mesalock-linux/rustcrypto-utils-sgx#d3d9962a7d993b460ffacc603c2e898c1beced99"
 
 [[package]]
 name = "byte-tools"
@@ -203,7 +204,7 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 [[package]]
 name = "byteorder"
 version = "1.3.2"
-source = "git+https://github.com/mesalock-linux/byteorder-sgx#d8fd3a1feea0b2d14295d163dbe6e47c8cfe8e83"
+source = "git+https://github.com/mesalock-linux/byteorder-sgx#8ad66bc38eb3c413aeb6f6b54a38611946a1bc73"
 dependencies = [
  "sgx_tstd",
 ]
@@ -217,7 +218,7 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 [[package]]
 name = "c2-chacha"
 version = "0.2.3"
-source = "git+https://github.com/mesalock-linux/cryptocorrosion-sgx#9621819593107b34d786f5611003f74fe6ecab97"
+source = "git+https://github.com/mesalock-linux/cryptocorrosion-sgx#b31e8668ee0d09678a239a01e6dbcad033e1197f"
 dependencies = [
  "byteorder 1.3.2",
  "ppv-lite86 0.2.6 (git+https://github.com/mesalock-linux/cryptocorrosion-sgx)",
@@ -239,7 +240,7 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 [[package]]
 name = "chrono"
 version = "0.4.10"
-source = "git+https://github.com/mesalock-linux/chrono-sgx#ff2a0ba8f00b4978e9c486790a792efc848feb18"
+source = "git+https://github.com/mesalock-linux/chrono-sgx#f563ab7ea63c4414be27f0fa9b6d21a28a035bc5"
 dependencies = [
  "num-integer 0.1.41",
  "num-traits 0.2.10",
@@ -311,7 +312,7 @@ dependencies = [
 [[package]]
 name = "crypto-mac"
 version = "0.8.0"
-source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#71e214d9b8d6fe41f1f549374b5ba561d60b82a3"
+source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#2a1086f0f10be58d15d62af62a76ddd0003fb4e6"
 dependencies = [
  "generic-array",
  "subtle 2.2.2 (git+https://github.com/mesalock-linux/subtle-sgx)",
@@ -347,13 +348,13 @@ checksum = "e2323f3f47db9a0e77ce7a300605d8d2098597fc451ed1a97bb1f6411bb550a7"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
 name = "digest"
 version = "0.8.1"
-source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#71e214d9b8d6fe41f1f549374b5ba561d60b82a3"
+source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#2a1086f0f10be58d15d62af62a76ddd0003fb4e6"
 dependencies = [
  "generic-array",
  "sgx_tstd",
@@ -465,7 +466,7 @@ dependencies = [
  "frame-support-procedural-tools",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -476,7 +477,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -485,7 +486,7 @@ version = "2.0.0-dev"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -565,7 +566,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -611,7 +612,7 @@ dependencies = [
 [[package]]
 name = "getrandom"
 version = "0.1.14"
-source = "git+https://github.com/mesalock-linux/getrandom-sgx.git#80ccc66d84eea22f98a101002d5ed817879f8a65"
+source = "git+https://github.com/mesalock-linux/getrandom-sgx.git#66a998d6a06ef0a91a14921a322fe7fa621c6a6e"
 dependencies = [
  "cfg-if",
  "sgx_libc",
@@ -658,7 +659,7 @@ dependencies = [
 [[package]]
 name = "hashbrown_tstd"
 version = "0.7.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "autocfg 1.0.0",
 ]
@@ -672,7 +673,7 @@ checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
 [[package]]
 name = "hmac"
 version = "0.7.1"
-source = "git+https://github.com/mesalock-linux/rustcrypto-MACs-sgx#7633da10118c46e561005a61cb3d4b9058605464"
+source = "git+https://github.com/mesalock-linux/rustcrypto-MACs-sgx#4a0eb58f2d8d347fccd5c0e899820c6ded4826b3"
 dependencies = [
  "crypto-mac 0.8.0",
  "digest 0.8.1 (git+https://github.com/mesalock-linux/rustcrypto-traits-sgx)",
@@ -691,7 +692,7 @@ dependencies = [
 [[package]]
 name = "hmac-drbg"
 version = "0.1.2"
-source = "git+https://github.com/mesalock-linux/hmac-drbg-rs-sgx#04955a88d7aa3b4446a57a99a0d9fc9d9e7bb1bb"
+source = "git+https://github.com/mesalock-linux/hmac-drbg-rs-sgx#acd647daddc741bf4fd4e546d13fa78dbd7c9687"
 dependencies = [
  "generic-array",
  "hmac 0.7.1 (git+https://github.com/mesalock-linux/rustcrypto-MACs-sgx)",
@@ -731,7 +732,7 @@ checksum = "7ef5550a42e3740a0e71f909d4c861056a284060af885ae7aa6242820f920d9d"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -752,7 +753,7 @@ dependencies = [
 [[package]]
 name = "itoa"
 version = "0.4.5"
-source = "git+https://github.com/mesalock-linux/itoa-sgx.git#b5c29afd29b9d246869d9375bdc0c228efdbf29d"
+source = "git+https://github.com/mesalock-linux/itoa-sgx.git#a49118cf1bc9ab4599c1f2b2cccc4f3f8c0ec38a"
 dependencies = [
  "sgx_tstd",
 ]
@@ -781,13 +782,13 @@ checksum = "99e85c08494b21a9054e7fe1374a732aeadaff3980b6990b94bfd3a70f690005"
 [[package]]
 name = "libsecp256k1"
 version = "0.3.5"
-source = "git+https://github.com/mesalock-linux/libsecp256k1-rs-sgx#5f1cf2aeb3109c926f0bf63306754bb9a931960a"
+source = "git+https://github.com/mesalock-linux/libsecp256k1-rs-sgx#49133489d8ff145751e3b49f3a14bb2af418c3f2"
 dependencies = [
  "arrayref",
  "crunchy",
  "digest 0.8.1 (git+https://github.com/mesalock-linux/rustcrypto-traits-sgx)",
  "hmac-drbg 0.1.2",
- "rand 0.7.3 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1)",
+ "rand 0.7.3 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2)",
  "sgx_tstd",
  "sha2 0.8.0",
  "subtle 2.2.2 (git+https://github.com/mesalock-linux/subtle-sgx)",
@@ -813,7 +814,7 @@ dependencies = [
 [[package]]
 name = "log"
 version = "0.4.8"
-source = "git+https://github.com/mesalock-linux/log-sgx#554a65180046af5a901d7233f3cf4693d58d3394"
+source = "git+https://github.com/mesalock-linux/log-sgx#3503e4d9e09d4fbeab530086c0db28f0fd447e9b"
 dependencies = [
  "cfg-if",
  "sgx_tstd",
@@ -865,7 +866,7 @@ checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
 [[package]]
 name = "num-bigint"
 version = "0.2.5"
-source = "git+https://github.com/mesalock-linux/num-bigint-sgx#cbc638aa30cbc6268d28b9eef4027cea25ab5b4b"
+source = "git+https://github.com/mesalock-linux/num-bigint-sgx#377ecfb8bfac838418e80af9ed6cc74a627ca9c9"
 dependencies = [
  "autocfg 1.0.0",
  "num-integer 0.1.41",
@@ -876,7 +877,7 @@ dependencies = [
 [[package]]
 name = "num-integer"
 version = "0.1.41"
-source = "git+https://github.com/mesalock-linux/num-integer-sgx#2b4d3afc0a2de15ec0e10e4748d73deb0f025582"
+source = "git+https://github.com/mesalock-linux/num-integer-sgx#0ece2da7c01233749769a1574f61236d1569b2b9"
 dependencies = [
  "autocfg 0.1.7",
  "num-traits 0.2.10",
@@ -896,7 +897,7 @@ dependencies = [
 [[package]]
 name = "num-traits"
 version = "0.2.10"
-source = "git+https://github.com/mesalock-linux/num-traits-sgx#effd92d492c3938212b09d815550ef4e9ca7226a"
+source = "git+https://github.com/mesalock-linux/num-traits-sgx#7551dca0b9f9fb86375bf1a84048d53f72d5ad79"
 dependencies = [
  "autocfg 0.1.7",
  "sgx_tstd",
@@ -1091,7 +1092,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1114,7 +1115,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f557c32c6d268a07c921471619c0295f5efad3a0e76d4f97a05c091a51d110b2"
 dependencies = [
  "proc-macro2",
- "syn 1.0.17",
+ "syn 1.0.18",
  "synstructure",
 ]
 
@@ -1137,7 +1138,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1180,7 +1181,7 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 [[package]]
 name = "ppv-lite86"
 version = "0.2.6"
-source = "git+https://github.com/mesalock-linux/cryptocorrosion-sgx#9621819593107b34d786f5611003f74fe6ecab97"
+source = "git+https://github.com/mesalock-linux/cryptocorrosion-sgx#b31e8668ee0d09678a239a01e6dbcad033e1197f"
 
 [[package]]
 name = "ppv-lite86"
@@ -1267,11 +1268,11 @@ dependencies = [
 [[package]]
 name = "rand"
 version = "0.7.3"
-source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1#d048899f1be34571177e9da643c17911b0550603"
+source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2#a6a7eccfd4f574b9dc87fec88ca779a12cae1ab0"
 dependencies = [
  "getrandom 0.1.14 (git+https://github.com/mesalock-linux/getrandom-sgx.git)",
  "rand_chacha 0.2.1",
- "rand_core 0.5.1 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1)",
+ "rand_core 0.5.1 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2)",
  "sgx_tstd",
 ]
 
@@ -1289,10 +1290,10 @@ dependencies = [
 [[package]]
 name = "rand_chacha"
 version = "0.2.1"
-source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1#d048899f1be34571177e9da643c17911b0550603"
+source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2#a6a7eccfd4f574b9dc87fec88ca779a12cae1ab0"
 dependencies = [
  "c2-chacha",
- "rand_core 0.5.1 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1)",
+ "rand_core 0.5.1 (git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2)",
  "sgx_tstd",
 ]
 
@@ -1309,7 +1310,7 @@ dependencies = [
 [[package]]
 name = "rand_core"
 version = "0.5.1"
-source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.6.5_sgx1.1.1#d048899f1be34571177e9da643c17911b0550603"
+source = "git+https://github.com/mesalock-linux/rand-sgx?tag=v0.7.3_sgx1.1.2#a6a7eccfd4f574b9dc87fec88ca779a12cae1ab0"
 dependencies = [
  "getrandom 0.1.14 (git+https://github.com/mesalock-linux/getrandom-sgx.git)",
  "sgx_tstd",
@@ -1362,7 +1363,7 @@ dependencies = [
 [[package]]
 name = "ring"
 version = "0.16.11"
-source = "git+https://github.com/mesalock-linux/ring-sgx?tag=v0.16.5#6053fe7eaef7de8a681bd0242a06b01fe9da4b02"
+source = "git+https://github.com/mesalock-linux/ring-sgx?tag=v0.16.5#5311ddb2d335ddabf7a00f94efd8e7a5f7a9f728"
 dependencies = [
  "cc",
  "sgx_tstd",
@@ -1373,7 +1374,7 @@ dependencies = [
 [[package]]
 name = "rust-crypto"
 version = "0.2.36"
-source = "git+https://github.com/mesalock-linux/rust-crypto-sgx#e5dd302ad593416bf58273eae921e6f41100443c"
+source = "git+https://github.com/mesalock-linux/rust-crypto-sgx#9c0fc985f34983f5e4f9b0d4bfd43cde9638d39f"
 dependencies = [
  "cc",
  "rustc-serialize",
@@ -1391,7 +1392,7 @@ checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
 [[package]]
 name = "rustc-serialize"
 version = "0.3.24"
-source = "git+https://github.com/mesalock-linux/rustc-serialize-sgx#f85c1722817952fbcacf38315d50d75005abde97"
+source = "git+https://github.com/mesalock-linux/rustc-serialize-sgx#b1e49a3008c6fafe74d07c068609d9c7552afc2d"
 dependencies = [
  "sgx_tstd",
 ]
@@ -1408,7 +1409,7 @@ dependencies = [
 [[package]]
 name = "rustls"
 version = "0.16.0"
-source = "git+https://github.com/mesalock-linux/rustls?branch=mesalock_sgx#b2ba59d0ca5941869a90f5e8401a99788c177bf6"
+source = "git+https://github.com/mesalock-linux/rustls?branch=mesalock_sgx#ce26c885355fde79d45a27a6bbca490d9e8fcc0e"
 dependencies = [
  "base64 0.10.1",
  "log 0.4.8 (git+https://github.com/mesalock-linux/log-sgx)",
@@ -1452,7 +1453,7 @@ dependencies = [
 [[package]]
 name = "sct"
 version = "0.6.0"
-source = "git+https://github.com/mesalock-linux/sct.rs?branch=mesalock_sgx#fab7765c8b8141076dae2e1d997b0e2c2dfb7788"
+source = "git+https://github.com/mesalock-linux/sct.rs?branch=mesalock_sgx#b16fb044362e6722566dbeb171e537c50dcb0501"
 dependencies = [
  "ring 0.16.11",
  "sgx_tstd",
@@ -1477,7 +1478,7 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 [[package]]
 name = "serde"
 version = "1.0.105"
-source = "git+https://github.com/mesalock-linux/serde-sgx#ef8226dfcaf5b704cd7db8ac6969dfd02b177572"
+source = "git+https://github.com/mesalock-linux/serde-sgx#3e1fcf4c007ae139e423e2f5867c3a9ba7d8fa4a"
 dependencies = [
  "serde_derive 1.0.105",
  "sgx_tstd",
@@ -1495,11 +1496,11 @@ dependencies = [
 [[package]]
 name = "serde_derive"
 version = "1.0.105"
-source = "git+https://github.com/mesalock-linux/serde-sgx#ef8226dfcaf5b704cd7db8ac6969dfd02b177572"
+source = "git+https://github.com/mesalock-linux/serde-sgx#3e1fcf4c007ae139e423e2f5867c3a9ba7d8fa4a"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1510,13 +1511,13 @@ checksum = "9e549e3abf4fb8621bd1609f11dfc9f5e50320802273b12f3811a67e6716ea6c"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
 name = "serde_json"
 version = "1.0.40"
-source = "git+https://github.com/mesalock-linux/serde-json-sgx#c28ad9a3c7a351c452afb54f4268292611f15e77"
+source = "git+https://github.com/mesalock-linux/serde-json-sgx#98279462247e23260ddee638e6a32a8d9fc898f9"
 dependencies = [
  "itoa",
  "ryu",
@@ -1526,13 +1527,27 @@ dependencies = [
 
 [[package]]
 name = "sgx_alloc"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
+
+[[package]]
+name = "sgx_backtrace"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
+dependencies = [
+ "sgx_backtrace_sys",
+ "sgx_demangle",
+ "sgx_libc",
+ "sgx_serialize_derive",
+ "sgx_trts",
+ "sgx_tstd",
+ "sgx_types",
+]
 
 [[package]]
 name = "sgx_backtrace_sys"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "cc",
  "sgx_build_helper",
@@ -1542,25 +1557,25 @@ dependencies = [
 [[package]]
 name = "sgx_build_helper"
 version = "0.1.3"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 
 [[package]]
 name = "sgx_demangle"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 
 [[package]]
 name = "sgx_libc"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_types",
 ]
 
 [[package]]
 name = "sgx_rand"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_trts",
  "sgx_tstd",
@@ -1569,25 +1584,43 @@ dependencies = [
 
 [[package]]
 name = "sgx_rand_derive"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "quote 0.3.15",
  "syn 0.11.11",
 ]
 
 [[package]]
+name = "sgx_serialize_derive"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
+dependencies = [
+ "quote 0.3.15",
+ "sgx_serialize_derive_internals",
+ "syn 0.11.11",
+]
+
+[[package]]
+name = "sgx_serialize_derive_internals"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
+dependencies = [
+ "syn 0.11.11",
+]
+
+[[package]]
 name = "sgx_tcrypto"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_types",
 ]
 
 [[package]]
 name = "sgx_tprotected_fs"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_trts",
  "sgx_types",
@@ -1595,8 +1628,8 @@ dependencies = [
 
 [[package]]
 name = "sgx_trts"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_libc",
  "sgx_types",
@@ -1604,16 +1637,16 @@ dependencies = [
 
 [[package]]
 name = "sgx_tse"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_types",
 ]
 
 [[package]]
 name = "sgx_tstd"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "hashbrown_tstd",
  "sgx_alloc",
@@ -1628,13 +1661,13 @@ dependencies = [
 
 [[package]]
 name = "sgx_types"
-version = "1.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+version = "1.1.2"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 
 [[package]]
 name = "sgx_unwind"
 version = "0.1.1"
-source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.1#66aaa2888992c63137e87adc688ddedab1181056"
+source = "git+https://github.com/apache/teaclave-sgx-sdk.git?rev=v1.1.2#31b323366cbab3b359fd4a3a9bc827ff37654059"
 dependencies = [
  "sgx_build_helper",
 ]
@@ -1642,7 +1675,7 @@ dependencies = [
 [[package]]
 name = "sha2"
 version = "0.8.0"
-source = "git+https://github.com/mesalock-linux/rustcrypto-hashes-sgx#0a5d344146b0b7a4ff3bebf632aee6f7a5a85e1f"
+source = "git+https://github.com/mesalock-linux/rustcrypto-hashes-sgx#68505ef594009188aa74f01bcd7250cdef7e08d5"
 dependencies = [
  "block-buffer 0.7.3 (git+https://github.com/mesalock-linux/rustcrypto-utils-sgx)",
  "digest 0.8.1 (git+https://github.com/mesalock-linux/rustcrypto-traits-sgx)",
@@ -1695,7 +1728,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1777,7 +1810,7 @@ version = "2.0.0-dev"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1866,7 +1899,7 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -1976,7 +2009,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "stream-cipher"
 version = "0.3.2"
-source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#71e214d9b8d6fe41f1f549374b5ba561d60b82a3"
+source = "git+https://github.com/mesalock-linux/rustcrypto-traits-sgx#2a1086f0f10be58d15d62af62a76ddd0003fb4e6"
 dependencies = [
  "generic-array",
 ]
@@ -1994,7 +2027,7 @@ checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 [[package]]
 name = "subtle"
 version = "2.2.2"
-source = "git+https://github.com/mesalock-linux/subtle-sgx#e9eb9716430573cca6163a55f5da32a28edeb505"
+source = "git+https://github.com/mesalock-linux/subtle-sgx#cf005c7b556a7475702c4cf785f739170e85cf88"
 dependencies = [
  "sgx_tstd",
 ]
@@ -2018,9 +2051,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.17"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0df0eb663f387145cab623dea85b09c2c5b4b0aef44e945d928e682fce71bb03"
+checksum = "410a7488c0a728c7ceb4ad59b9567eb4053d02e8cc7f5c0e0eeeb39518369213"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
@@ -2044,7 +2077,7 @@ checksum = "67656ea1dc1b41b1451851562ea232ec2e5a80242139f7e679ceccfb5d61f545"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
  "unicode-xid 0.2.0",
 ]
 
@@ -2065,7 +2098,7 @@ checksum = "ca972988113b7715266f91250ddb98070d033c62a011fa0fcc57434a649310dd"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
 ]
 
 [[package]]
@@ -2175,7 +2208,7 @@ dependencies = [
 [[package]]
 name = "webpki"
 version = "0.21.2"
-source = "git+https://github.com/mesalock-linux/webpki?branch=mesalock_sgx#7e659ba78806b5dd249c16a372985272369ca4bf"
+source = "git+https://github.com/mesalock-linux/webpki?branch=mesalock_sgx#ab35cad4197f6e421ca14da0a2eb7df86654418f"
 dependencies = [
  "ring 0.16.11",
  "sgx_tstd",
@@ -2185,7 +2218,7 @@ dependencies = [
 [[package]]
 name = "webpki-roots"
 version = "0.19.0"
-source = "git+https://github.com/mesalock-linux/webpki-roots?branch=mesalock_sgx#3a3c9e909cd2c0a05d2614c6b153b15141e81507"
+source = "git+https://github.com/mesalock-linux/webpki-roots?branch=mesalock_sgx#4b542642de1d5a5394f8a24b356b7801e9220008"
 dependencies = [
  "sgx_tstd",
  "webpki 0.21.2",
@@ -2216,7 +2249,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "yasna"
 version = "0.3.1"
-source = "git+https://github.com/mesalock-linux/yasna.rs-sgx#582b016f9747ce5b0511185975a689567941af45"
+source = "git+https://github.com/mesalock-linux/yasna.rs-sgx#e28d16ecb426975d10ab792179e4d4f473ab872d"
 dependencies = [
  "bit-vec",
  "chrono 0.4.10",
@@ -2241,6 +2274,6 @@ checksum = "de251eec69fc7c1bc3923403d18ececb929380e016afe103da75f396704f8ca2"
 dependencies = [
  "proc-macro2",
  "quote 1.0.3",
- "syn 1.0.17",
+ "syn 1.0.18",
  "synstructure",
 ]
