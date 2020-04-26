@@ -76,5 +76,5 @@ default = [
   "sp-io/disable_panic_handler",
   "sp-io/disable_oom",
   "sp-io/disable_allocator",
-  "sp-io/native-nostd"
+  "runtime/native-nostd-hasher"
 ]
