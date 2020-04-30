@@ -3,7 +3,7 @@ pRuntime
 
 <img align="right" width="320" src="docs/static/web3 foundation_grants_badge_black.svg" alt="Funded by the web3 foundation">
 
-**Working in progress**
+**DEPRECATED: this repo has been merged to our monorepo [phala-blockchain](https://github.com/Phala-Network/phala-blockchain)**
 
 This is the implementation of pRuntime (Phala Network TEE Runtime) based on Intel SGX. It's the
 runtime to execute confidential smart contracts.
